@@ -1,0 +1,30 @@
+{
+  "name": "rt-sitram-implementation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @rt-sitram/web dev",
+    "build": "pnpm --filter @rt-sitram/web build",
+    "typecheck": "pnpm --filter @rt-sitram/shared typecheck && pnpm --filter @rt-sitram/web typecheck",
+    "lint": "oxlint --deny-warnings apps packages",
+    "format": "oxfmt --write apps packages package.json",
+    "format:check": "oxfmt --check apps packages package.json",
+    "test": "pnpm --filter @rt-sitram/web test",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset",
+    "supabase:create-test-user": "powershell -NoProfile -ExecutionPolicy Bypass -File supabase/scripts/create-local-test-user.ps1",
+    "supabase:verify-spike-rls": "powershell -NoProfile -ExecutionPolicy Bypass -File supabase/scripts/verify-spike-records-rls.ps1"
+  },
+  "devDependencies": {
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "supabase": "2.114.0"
+  },
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=11.19.0 <12"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

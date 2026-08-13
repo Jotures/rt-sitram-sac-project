@@ -1,0 +1,75 @@
+export interface SupabaseEnvironment {
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+}
+
+export type SupabaseConfigurationProblem =
+  | "MISSING_URL"
+  | "INVALID_URL"
+  | "MISSING_PUBLISHABLE_KEY";
+
+export interface SupabaseClientConfiguration {
+  readonly url: string;
+  readonly publishableKey: string;
+}
+
+export type SupabaseConfiguration =
+  | {
+      readonly status: "CONFIGURED";
+      readonly config: SupabaseClientConfiguration;
+    }
+  | {
+      readonly status: "NOT_CONFIGURED";
+      readonly problems: readonly SupabaseConfigurationProblem[];
+    };
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function readValue(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
+
+export function readSupabaseConfiguration(environment: SupabaseEnvironment): SupabaseConfiguration {
+  const url = readValue(environment.VITE_SUPABASE_URL);
+  const publishableKey = readValue(environment.VITE_SUPABASE_PUBLISHABLE_KEY);
+  const problems: SupabaseConfigurationProblem[] = [];
+
+  if (url.length === 0) {
+    problems.push("MISSING_URL");
+  } else if (!isHttpUrl(url)) {
+    problems.push("INVALID_URL");
+  }
+
+  if (publishableKey.length === 0) {
+    problems.push("MISSING_PUBLISHABLE_KEY");
+  }
+
+  if (problems.length > 0) {
+    return { status: "NOT_CONFIGURED", problems };
+  }
+
+  return {
+    status: "CONFIGURED",
+    config: { url, publishableKey },
+  };
+}
+
+const problemMessages: Record<SupabaseConfigurationProblem, string> = {
+  MISSING_URL: "Falta VITE_SUPABASE_URL.",
+  INVALID_URL: "VITE_SUPABASE_URL debe ser una URL http(s) válida.",
+  MISSING_PUBLISHABLE_KEY: "Falta VITE_SUPABASE_PUBLISHABLE_KEY.",
+};
+
+export function describeSupabaseConfigurationProblems(
+  problems: readonly SupabaseConfigurationProblem[],
+): string {
+  return problems.map((problem) => problemMessages[problem]).join(" ");
+}
