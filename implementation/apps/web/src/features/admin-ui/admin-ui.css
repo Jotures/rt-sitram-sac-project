@@ -1907,6 +1907,17 @@
   padding: 1rem;
 }
 
+.admin-action-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block-end: 1rem;
+}
+
+.admin-action-choice .button {
+  flex: 1 1 10rem;
+}
+
 .admin-action-dialog__body > .admin-form,
 .admin-action-dialog__body > .admin-card {
   margin: 0;

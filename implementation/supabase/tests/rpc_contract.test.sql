@@ -1,6 +1,6 @@
 begin;
 set local search_path = extensions, public, auth;
-select plan(82);
+select plan(83);
 
 select has_function('public', 'approve_trip', array['uuid'], 'approve_trip contract exists');
 select has_function('public', 'schedule_trip', array['uuid','uuid','uuid'], 'schedule_trip contract exists');
@@ -35,6 +35,7 @@ select has_function('public', 'refresh_operational_alerts', array[]::text[], 're
 select has_function('public', 'apply_driver_trip_transition', array['uuid','uuid','text','numeric','boolean','timestamp with time zone','text'], 'offline driver transition contract exists');
 select has_function('public', 'review_expense', array['uuid','validation_status','numeric','text'], 'audited expense review contract exists');
 select has_function('public', 'link_driver_profile', array['uuid','uuid'], 'driver profile link contract exists');
+select has_function('public', 'manage_company_profile_access', array['uuid','text','app_role','text'], 'audited profile access management contract exists');
 select has_function('public', 'create_trip_with_load', array['uuid','text','text','timestamp with time zone','numeric','text','numeric'], 'atomic trip and initial load contract exists');
 select has_function('public', 'create_trip_with_load', array['uuid','text','text','timestamp with time zone','numeric','text','numeric','freight_pricing_mode','numeric'], 'per-ton trip capture contract exists');
 select has_function('public', 'update_client_master', array['uuid','timestamp with time zone','text','text','text','text','text','integer','client_relationship_type','boolean','text'], 'audited client master update contract exists');

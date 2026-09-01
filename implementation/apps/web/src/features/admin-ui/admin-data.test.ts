@@ -754,6 +754,27 @@ describe("Supabase admin data gateway", () => {
     expect(calls[0]?.args).not.toHaveProperty("company_id");
   });
 
+  it("manages profile access only through the audited server command", async () => {
+    const { client, calls } = clientWithRpc();
+    await createSupabaseAdminDataGateway(client).manageCompanyProfileAccess({
+      profileId: "profile-a",
+      action: "suspend",
+      reason: "Fin de vínculo operativo",
+    });
+    expect(calls).toEqual([
+      {
+        name: "manage_company_profile_access",
+        args: {
+          p_profile_id: "profile-a",
+          p_action: "suspend",
+          p_next_role: null,
+          p_reason: "Fin de vínculo operativo",
+        },
+      },
+    ]);
+    expect(calls[0]?.args).not.toHaveProperty("company_id");
+  });
+
   it("records an expense review decision and its audit note through the command", async () => {
     const { client, calls } = clientWithRpc();
     await createSupabaseAdminDataGateway(client).reviewExpense({

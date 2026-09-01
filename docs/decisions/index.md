@@ -46,3 +46,4 @@ Registro canónico de decisiones duraderas. Los logs rotan en bloques determinis
 | DEC-040 | Jerarquía humana, captura flexible y maestros auditados | Accepted | 2026-08-30 | SESSION-20260828-011 | [DEC-036-040.md](DEC-036-040.md) | UX administrativa, maestros, flete, documentos y acciones |
 | DEC-041 | Analítica trazable desde el despliegue | Accepted | 2026-08-30 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Reportes, margen directo, cobertura, carga/vacío y exportación |
 | DEC-042 | Rediseño móvil premium del Centro de Control | Accepted | 2026-08-31 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | UX/UI, shell, rutas, accesibilidad y movimiento |
+| DEC-043 | Administración reversible y auditada de accesos | Accepted — pendiente de aplicación remota | 2026-09-01 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Identidad, roles, acceso, vínculo Conductor y auditoría |

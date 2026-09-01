@@ -392,6 +392,9 @@ allow_dynamic_registration = false
 [functions.invite-company-user]
 verify_jwt = true
 
+[functions.resend-company-invitation]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -41,6 +41,7 @@ import {
   type OperationalCycleStatus,
   type AdminPrivateFile,
   type AdminProfileRow,
+  type ProfileAccessAction,
   type AdminSettlementDetail,
   type AdminSupplierRow,
   type AdminStaffCaptureOptions,
@@ -5798,6 +5799,7 @@ function ProfileSettingsPage({
 }): React.JSX.Element {
   const loader = useCallback(() => gateway.listProfiles(), [gateway]);
   const resource = useResource(loader);
+  const [selected, setSelected] = useState<AdminProfileRow | null>(null);
   const driversLoader = useCallback(
     () => (role === "management" ? gateway.listDrivers() : Promise.resolve([])),
     [gateway, role],
@@ -5840,10 +5842,13 @@ function ProfileSettingsPage({
     );
   return (
     <>
-      <PageHeader title="Perfiles" description="Usuarios y roles de la empresa autenticada." />
+      <PageHeader
+        title="Accesos"
+        description="Usuarios, roles y acceso a la empresa autenticada."
+      />
       {role === "management" && canMutate ? (
         <AdminFormDisclosure
-          label="Administrar accesos"
+          label="Agregar acceso"
           copy="Invita usuarios o vincula un perfil Conductor con su registro operativo."
         >
           {inviteForm}
@@ -5890,15 +5895,163 @@ function ProfileSettingsPage({
       )}
       <section className="admin-card admin-list-card">
         <div className="admin-card__heading">
-          <h2>Usuarios</h2>
+          <h2>Accesos de la empresa</h2>
           <span>{resource.data?.length ?? 0}</span>
         </div>
         <PageState resource={resource} emptyCopy="No existen perfiles visibles.">
-          {(rows) => <RecordTable rows={rows.map(profileToListRow)} kind="profiles" />}
+          {(rows) => (
+            <RecordTable
+              rows={rows.map(profileToListRow)}
+              kind="profiles"
+              actions={
+                role === "management" && canMutate
+                  ? (row) => {
+                      const profile = rows.find((candidate) => candidate.id === row.id);
+                      return profile === undefined ? null : (
+                        <Button onClick={() => setSelected(profile)} variant="quiet">
+                          Gestionar
+                        </Button>
+                      );
+                    }
+                  : undefined
+              }
+            />
+          )}
         </PageState>
       </section>
+      {selected === null ? null : (
+        <ProfileAccessDialog
+          gateway={gateway}
+          profile={selected}
+          onClose={() => setSelected(null)}
+          onSaved={() => {
+            setSelected(null);
+            resource.reload();
+            drivers.reload();
+          }}
+        />
+      )}
     </>
   );
+}
+
+function ProfileAccessDialog({
+  gateway,
+  profile,
+  onClose,
+  onSaved,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly profile: AdminProfileRow;
+  readonly onClose: () => void;
+  readonly onSaved: () => void;
+}): React.JSX.Element {
+  const [action, setAction] = useState<ProfileAccessAction>(
+    profile.status === "Activo" ? "suspend" : "reactivate",
+  );
+  const submit = async (form: FormData): Promise<void> => {
+    await gateway.manageCompanyProfileAccess({
+      profileId: profile.id,
+      action,
+      nextRole: action === "change_role" ? roleValue(form, "nextRole") : undefined,
+      reason: textValue(form, "reason"),
+    });
+  };
+  return (
+    <AdminActionDialog
+      title={`Gestionar acceso: ${profile.title}`}
+      copy="Estos cambios conservan el historial operativo y quedan auditados. No eliminan al usuario ni su ficha de conductor."
+      onClose={onClose}
+    >
+      <div className="admin-action-choice" role="group" aria-label="Acción de acceso">
+        {profile.status === "Activo" ? (
+          <Button
+            onClick={() => setAction("suspend")}
+            variant={action === "suspend" ? "primary" : "quiet"}
+          >
+            Suspender acceso
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setAction("reactivate")}
+            variant={action === "reactivate" ? "primary" : "quiet"}
+          >
+            Reactivar acceso
+          </Button>
+        )}
+        <Button
+          onClick={() => setAction("change_role")}
+          variant={action === "change_role" ? "primary" : "quiet"}
+        >
+          Cambiar rol
+        </Button>
+        {profile.role === "driver" ? (
+          <Button
+            onClick={() => setAction("unlink_driver")}
+            variant={action === "unlink_driver" ? "primary" : "quiet"}
+          >
+            Desvincular conductor
+          </Button>
+        ) : null}
+      </div>
+      <SimpleForm
+        compact
+        title={profileAccessActionLabel(action)}
+        submitLabel="Confirmar cambio"
+        description={profileAccessActionDescription(action)}
+        onSubmit={submit}
+        onSaved={onSaved}
+      >
+        {action === "change_role" ? (
+          <SelectField
+            label="Nuevo rol"
+            name="nextRole"
+            options={(["management", "administration", "driver", "accounting"] as const).map(
+              (role) => ({
+                id: role,
+                label: profileRoleLabel(role),
+                status: "Rol de acceso",
+              }),
+            )}
+            required
+          />
+        ) : null}
+        <TextareaField
+          label="Motivo"
+          name="reason"
+          required
+          hint="Explica brevemente por qué se realiza este cambio de acceso."
+        />
+      </SimpleForm>
+      {profile.status === "Activo" ? (
+        <SimpleForm
+          compact
+          title="Reenviar invitación"
+          submitLabel="Reenviar invitación"
+          description="Envía nuevamente el enlace de creación de clave al correo registrado del usuario."
+          onSubmit={async () => gateway.resendCompanyInvitation(profile.id)}
+          successMessage="Invitación reenviada."
+        />
+      ) : null}
+    </AdminActionDialog>
+  );
+}
+
+function profileAccessActionLabel(action: ProfileAccessAction): string {
+  if (action === "suspend") return "Suspender acceso";
+  if (action === "reactivate") return "Reactivar acceso";
+  if (action === "change_role") return "Cambiar rol";
+  return "Desvincular conductor";
+}
+
+function profileAccessActionDescription(action: ProfileAccessAction): string {
+  if (action === "suspend")
+    return "La persona conservará su historial, pero no podrá ingresar ni ser programada como conductor.";
+  if (action === "reactivate")
+    return "La persona volverá a poder ingresar con el rol que conserva actualmente.";
+  if (action === "change_role")
+    return "El nuevo rol se aplicará al próximo acceso. Primero desvincula la ficha si deja de ser Conductor.";
+  return "La ficha operativa conservará su historial, pero quedará sin usuario de acceso asociado.";
 }
 
 function AdminDetailPage({
@@ -7412,13 +7565,17 @@ function detailTitle(routeId: ProductRouteId): string {
 }
 
 function profileToListRow(profile: AdminProfileRow): AdminListRow {
+  return { ...profile, description: profileRoleLabel(profile.role) };
+}
+
+function profileRoleLabel(role: AdminProfileRow["role"]): string {
   const labels: Readonly<Record<AdminProfileRow["role"], string>> = {
     management: "Gerencia",
     administration: "Administración",
     driver: "Conductor",
     accounting: "Contabilidad",
   };
-  return { ...profile, description: labels[profile.role] };
+  return labels[role];
 }
 
 function ResourceCrudPage({

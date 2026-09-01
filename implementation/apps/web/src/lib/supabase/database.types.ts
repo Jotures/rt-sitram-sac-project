@@ -4593,6 +4593,21 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      manage_company_profile_access: {
+        Args: {
+          p_action: string;
+          p_next_role?: Database["public"]["Enums"]["app_role"] | null;
+          p_profile_id: string;
+          p_reason?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["profiles"]["Row"];
+        SetofOptions: {
+          from: "*";
+          to: "profiles";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       link_gps_vehicle: {
         Args: {
           p_external_asset_id: string;

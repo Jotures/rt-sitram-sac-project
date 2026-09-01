@@ -417,6 +417,8 @@ export interface AdminProfileRow extends AdminListRow {
   readonly role: "management" | "administration" | "driver" | "accounting";
 }
 
+export type ProfileAccessAction = "suspend" | "reactivate" | "change_role" | "unlink_driver";
+
 export interface AdminWriteContext {
   readonly companyId: string;
   readonly profileId: string;
@@ -805,6 +807,13 @@ export interface AdminDataGateway {
     readonly driverId: string;
     readonly profileId: string;
   }): Promise<void>;
+  manageCompanyProfileAccess(input: {
+    readonly profileId: string;
+    readonly action: ProfileAccessAction;
+    readonly nextRole?: AdminProfileRow["role"] | undefined;
+    readonly reason: string;
+  }): Promise<void>;
+  resendCompanyInvitation(profileId: string): Promise<void>;
 }
 
 interface QueryError {
@@ -2519,6 +2528,20 @@ export function createSupabaseAdminDataGateway(
         driver_id: input.driverId,
         profile_id: input.profileId,
       });
+    },
+    manageCompanyProfileAccess: async (input) => {
+      await rpc("manage_company_profile_access", {
+        p_profile_id: input.profileId,
+        p_action: input.action,
+        p_next_role: input.nextRole ?? null,
+        p_reason: input.reason,
+      });
+    },
+    resendCompanyInvitation: async (profileId) => {
+      const result = await dataClient.functions.invoke("resend-company-invitation", {
+        body: { profile_id: profileId },
+      });
+      if (result.error !== null) throw new Error(result.error.message);
     },
   };
 }
