@@ -8,6 +8,8 @@ export interface DriverTripRow {
   readonly destination: string;
   readonly operational_status: string;
   readonly server_operational_status: string;
+  readonly capture_mode: "driver_app" | "staff_assisted";
+  readonly capture_mode_changed_at: string | null;
   readonly scheduled_at: string;
   readonly started_at: string | null;
   readonly operational_finished_at: string | null;
@@ -35,6 +37,12 @@ const WRITABLE_TRIP_STATUSES = new Set(["loading", "in_transit", "unloading"]);
 
 export function isTripWritable(status: string): boolean {
   return WRITABLE_TRIP_STATUSES.has(status);
+}
+
+export function isDriverTripCaptureWritable(
+  trip: Pick<DriverTripRow, "operational_status" | "capture_mode">,
+): boolean {
+  return isTripWritable(trip.operational_status) && trip.capture_mode === "driver_app";
 }
 
 export function useDriverTrips(): {
@@ -79,6 +87,7 @@ export function useDriverTrips(): {
       END AS operational_status,
       t.operational_status AS server_operational_status,
       t.scheduled_at, t.started_at, t.operational_finished_at,
+      t.capture_mode, t.capture_mode_changed_at,
       t.vehicle_id, v.plate, v.current_odometer_km, d.display_name AS driver_name,
       t.version
     FROM trips t

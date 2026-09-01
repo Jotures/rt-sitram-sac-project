@@ -90,6 +90,9 @@ export interface AdminTripRow extends AdminListRow {
   readonly origin: string;
   readonly destination: string;
   readonly operationalStatus: string;
+  readonly captureMode: "driver_app" | "staff_assisted";
+  readonly captureModeChangedAt: string | null;
+  readonly driverHasAppAccess: boolean;
   readonly freightAmount: number;
   readonly freightPricingMode: "total" | "per_ton";
   readonly freightRatePerTon: number | null;
@@ -383,9 +386,13 @@ export interface AdminOption {
 export interface AdminTripSetupOptions {
   readonly clients: readonly AdminOption[];
   readonly vehicles: readonly AdminOption[];
-  readonly drivers: readonly AdminOption[];
+  readonly drivers: readonly AdminTripDriverOption[];
   readonly registeredDrivers: number;
   readonly driversAwaitingAccess: number;
+}
+
+export interface AdminTripDriverOption extends AdminOption {
+  readonly hasAppAccess?: boolean;
 }
 
 /**
@@ -506,6 +513,58 @@ export interface AdminDataGateway {
     readonly tripId: string;
     readonly vehicleId: string;
     readonly driverId: string;
+    readonly captureMode: "driver_app" | "staff_assisted";
+  }): Promise<void>;
+  changeTripCaptureMode(input: {
+    readonly tripId: string;
+    readonly captureMode: "driver_app" | "staff_assisted";
+    readonly version: number;
+    readonly reason: string;
+  }): Promise<void>;
+  recordStaffTripTransition(input: {
+    readonly requestId: string;
+    readonly tripId: string;
+    readonly action: "start" | "arrive" | "complete";
+    readonly odometerKm: number | null;
+    readonly cargoDelivered: boolean;
+    readonly occurredAt: string;
+    readonly loadState: "loaded" | "empty" | null;
+    readonly version: number;
+    readonly reason: string;
+  }): Promise<void>;
+  recordStaffTripLoadState(input: {
+    readonly id: string;
+    readonly tripId: string;
+    readonly loadState: "loaded" | "empty";
+    readonly effectiveAt: string;
+    readonly odometerKm: number;
+    readonly version: number;
+    readonly reason: string;
+    readonly idempotencyKey: string;
+  }): Promise<void>;
+  recordStaffTripOdometer(input: {
+    readonly id: string;
+    readonly tripId: string;
+    readonly readingKm: number;
+    readonly readingAt: string;
+    readonly readingType: string;
+    readonly version: number;
+    readonly reason: string;
+    readonly idempotencyKey: string;
+  }): Promise<void>;
+  recordStaffTripIncident(input: {
+    readonly id: string;
+    readonly tripId: string;
+    readonly occurredAt: string;
+    readonly location: string | null;
+    readonly incidentType: string;
+    readonly severity: "low" | "medium" | "high" | "critical";
+    readonly description: string;
+    readonly actionTaken: string | null;
+    readonly estimatedCost: number | null;
+    readonly version: number;
+    readonly reason: string;
+    readonly idempotencyKey: string;
   }): Promise<void>;
   transitionTripToUnloading(input: {
     readonly tripId: string;
@@ -866,7 +925,7 @@ const selectColumns: Readonly<Record<AdminTable, string>> = {
   drivers:
     "id, profile_id, display_name, document_type, document_number, phone, license_number, license_expires_on, contract_type, contract_started_on, contract_ended_on, usual_vehicle_id, current_status, active, notes, created_at, updated_at",
   trips:
-    "id, code, client_id, vehicle_id, driver_id, cycle_id, cycle_leg_kind, cycle_sequence, origin, destination, scheduled_at, started_at, operational_finished_at, operational_status, administrative_status, financial_status, freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency, notes, version, updated_at",
+    "id, code, client_id, vehicle_id, driver_id, cycle_id, cycle_leg_kind, cycle_sequence, origin, destination, scheduled_at, started_at, operational_finished_at, capture_mode, capture_mode_changed_at, operational_status, administrative_status, financial_status, freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency, notes, version, updated_at",
   operational_cycles:
     "id, code, vehicle_id, primary_driver_id, status, return_status, notes, version, started_at, ended_at, created_at",
   expenses:
@@ -1068,17 +1127,34 @@ export function createSupabaseAdminDataGateway(
   async function listTrips(): Promise<readonly AdminTripRow[]> {
     const tripRows = await readRows("trips", "scheduled_at");
     if (tripRows.length === 0) return [];
-    const [clientRows, vehicleRows, driverRows] = await Promise.all([
+    const [clientRows, vehicleRows, driverRows, profileRows] = await Promise.all([
       readRows("clients", "created_at"),
       readRows("vehicles", "plate"),
       readRows("drivers", "display_name"),
+      readRows("profiles", "created_at"),
     ]);
+    const activeDriverProfileIds = new Set(
+      profileRows
+        .filter(
+          (profile) =>
+            readBoolean(profile, "active") !== false && readText(profile, "role") === "driver",
+        )
+        .map(requiredId),
+    );
     return tripRows.map((row) =>
       mapTripRow(
         row,
         clientLabelsById(clientRows),
         labelsById(vehicleRows, "plate", "Unidad sin placa"),
         labelsById(driverRows, "display_name", "Conductor sin nombre"),
+        new Set(
+          driverRows
+            .filter((driver) => {
+              const profileId = readText(driver, "profile_id");
+              return profileId !== null && activeDriverProfileIds.has(profileId);
+            })
+            .map(requiredId),
+        ),
       ),
     );
   }
@@ -2069,12 +2145,19 @@ export function createSupabaseAdminDataGateway(
         (row) =>
           readBoolean(row, "active") !== false && readText(row, "current_status") === "available",
       );
-      const drivers = activeAvailableDrivers
-        .filter((row) => {
-          const profileId = readText(row, "profile_id");
-          return profileId !== null && activeDriverProfileIds.has(profileId);
-        })
-        .map((row) => toTripSetupOption(row, "display_name", "Conductor sin nombre", "Disponible"));
+      const drivers = activeAvailableDrivers.map((row) => {
+        const profileId = readText(row, "profile_id");
+        const hasAppAccess = profileId !== null && activeDriverProfileIds.has(profileId);
+        return {
+          ...toTripSetupOption(
+            row,
+            "display_name",
+            "Conductor sin nombre",
+            hasAppAccess ? "Disponible · App vinculada" : "Disponible · Operación desde oficina",
+          ),
+          hasAppAccess,
+        };
+      });
 
       return {
         clients: clientRows
@@ -2089,7 +2172,7 @@ export function createSupabaseAdminDataGateway(
           .map((row) => toTripSetupOption(row, "plate", "Unidad sin placa", "Disponible")),
         drivers,
         registeredDrivers: driverRows.filter((row) => readBoolean(row, "active") !== false).length,
-        driversAwaitingAccess: activeAvailableDrivers.length - drivers.length,
+        driversAwaitingAccess: drivers.filter((driver) => !driver.hasAppAccess).length,
       };
     },
     loadOperationalCycleOptions,
@@ -2167,6 +2250,69 @@ export function createSupabaseAdminDataGateway(
         trip_id: input.tripId,
         vehicle_id: input.vehicleId,
         driver_id: input.driverId,
+        capture_mode: input.captureMode,
+      });
+    },
+    changeTripCaptureMode: async (input) => {
+      await rpc("change_trip_capture_mode", {
+        p_trip_id: input.tripId,
+        p_capture_mode: input.captureMode,
+        p_expected_version: input.version,
+        p_reason: input.reason,
+      });
+    },
+    recordStaffTripTransition: async (input) => {
+      await rpc("record_staff_trip_transition", {
+        p_request_id: input.requestId,
+        p_trip_id: input.tripId,
+        p_action: input.action,
+        p_odometer_km: input.odometerKm,
+        p_cargo_delivered: input.cargoDelivered,
+        p_occurred_at: input.occurredAt,
+        p_load_state: input.loadState,
+        p_expected_version: input.version,
+        p_reason: input.reason,
+      });
+    },
+    recordStaffTripLoadState: async (input) => {
+      await rpc("record_staff_trip_load_state", {
+        p_id: input.id,
+        p_trip_id: input.tripId,
+        p_load_state: input.loadState,
+        p_effective_at: input.effectiveAt,
+        p_odometer_km: input.odometerKm,
+        p_expected_version: input.version,
+        p_reason: input.reason,
+        p_idempotency_key: input.idempotencyKey,
+      });
+    },
+    recordStaffTripOdometer: async (input) => {
+      await rpc("record_staff_trip_odometer_entry", {
+        p_id: input.id,
+        p_trip_id: input.tripId,
+        p_reading_km: input.readingKm,
+        p_reading_at: input.readingAt,
+        p_reading_type: input.readingType,
+        p_expected_version: input.version,
+        p_reason: input.reason,
+        p_idempotency_key: input.idempotencyKey,
+      });
+    },
+    recordStaffTripIncident: async (input) => {
+      await rpc("record_staff_trip_incident", {
+        p_id: input.id,
+        p_trip_id: input.tripId,
+        p_occurred_at: input.occurredAt,
+        p_location: input.location,
+        p_incident_type: input.incidentType,
+        p_severity: input.severity,
+        p_description: input.description,
+        p_action_taken: input.actionTaken,
+        p_estimated_cost: input.estimatedCost,
+        p_file_id: null,
+        p_expected_version: input.version,
+        p_reason: input.reason,
+        p_idempotency_key: input.idempotencyKey,
       });
     },
     transitionTripToUnloading: async (input) => {
@@ -3025,6 +3171,7 @@ function mapTripRow(
   clientLabels: ReadonlyMap<string, string>,
   vehicleLabels: ReadonlyMap<string, string>,
   driverLabels: ReadonlyMap<string, string>,
+  driverIdsWithAppAccess: ReadonlySet<string> = new Set(),
 ): AdminTripRow {
   const clientId = readText(row, "client_id") ?? "";
   const vehicleId = readText(row, "vehicle_id");
@@ -3068,6 +3215,10 @@ function mapTripRow(
     origin,
     destination,
     operationalStatus: readText(row, "operational_status") ?? "draft",
+    captureMode:
+      readText(row, "capture_mode") === "staff_assisted" ? "staff_assisted" : "driver_app",
+    captureModeChangedAt: readText(row, "capture_mode_changed_at"),
+    driverHasAppAccess: driverId !== null && driverIdsWithAppAccess.has(driverId),
     freightAmount: readNumber(row, "freight_amount") ?? 0,
     freightPricingMode: mode,
     freightRatePerTon: mode === "per_ton" ? rate : null,

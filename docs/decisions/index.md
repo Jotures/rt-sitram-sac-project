@@ -27,7 +27,7 @@ Registro canónico de decisiones duraderas. Los logs rotan en bloques determinis
 | DEC-021 | Vercel como hosting del cliente PWA | Accepted | 2026-08-16 | SESSION-20260813-010 | [DEC-021-025.md](DEC-021-025.md) | Despliegue web |
 | DEC-022 | Identidad visual Andes Operativos y movimiento productivo | Accepted | 2026-08-19 | SESSION-20260813-010 | [DEC-021-025.md](DEC-021-025.md) | UX/UI e identidad de producto |
 | DEC-023 | Piloto funcional aislado y flujo de viaje como prioridad de producto | Accepted | 2026-08-20 | SESSION-20260813-010 | [DEC-021-025.md](DEC-021-025.md) | Estrategia de implementación, QA y despliegue |
-| DEC-024 | Perfil de conductor operativo requerido al programar | Accepted | 2026-08-20 | SESSION-20260813-010 | [DEC-021-025.md](DEC-021-025.md) | Programación, identidad y operación del conductor |
+| DEC-024 | Perfil de conductor operativo requerido al programar | Superseded by DEC-044 | 2026-08-20 | SESSION-20260813-010 | [DEC-021-025.md](DEC-021-025.md) | Programación, identidad y operación del conductor |
 | DEC-025 | Evaluador de Viajes como siguiente vertical de producto | Accepted | 2026-08-20 | SESSION-20260813-010 | [DEC-021-025.md](DEC-021-025.md) | Estrategia de producto, rentabilidad estimada y decisión comercial |
 | DEC-026 | Política económica configurable y versionada para el Evaluador | Accepted | 2026-08-20 | SESSION-20260813-010 | [DEC-026-030.md](DEC-026-030.md) | Configuración económica, rentabilidad estimada y auditoría |
 | DEC-027 | Corte controlado del piloto a uso real | Accepted | 2026-08-20 | SESSION-20260813-010 | [DEC-026-030.md](DEC-026-030.md) | Despliegue, ciclo de vida de datos piloto y puesta en servicio |
@@ -46,4 +46,5 @@ Registro canónico de decisiones duraderas. Los logs rotan en bloques determinis
 | DEC-040 | Jerarquía humana, captura flexible y maestros auditados | Accepted | 2026-08-30 | SESSION-20260828-011 | [DEC-036-040.md](DEC-036-040.md) | UX administrativa, maestros, flete, documentos y acciones |
 | DEC-041 | Analítica trazable desde el despliegue | Accepted | 2026-08-30 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Reportes, margen directo, cobertura, carga/vacío y exportación |
 | DEC-042 | Rediseño móvil premium del Centro de Control | Accepted | 2026-08-31 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | UX/UI, shell, rutas, accesibilidad y movimiento |
-| DEC-043 | Administración reversible y auditada de accesos | Accepted — pendiente de aplicación remota | 2026-09-01 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Identidad, roles, acceso, vínculo Conductor y auditoría |
+| DEC-043 | Administración reversible y auditada de accesos | Accepted | 2026-09-01 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Identidad, roles, acceso, vínculo Conductor y auditoría |
+| DEC-044 | Operación asistida por oficina sin cuenta de conductor | Accepted — aplicación remota pendiente de la sesión autorizada de Supabase | 2026-09-01 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Programación, operación, identidad, sincronización y auditoría |

@@ -1,12 +1,18 @@
 begin;
 set local search_path = extensions, public, auth;
-select plan(8);
+select plan(18);
 
 select has_function(
   'public',
   'schedule_trip',
   array['uuid','uuid','uuid','integer'],
   'versioned scheduling primitive exists'
+);
+select has_function(
+  'public',
+  'schedule_trip',
+  array['uuid','uuid','uuid','trip_capture_mode'],
+  'capture-mode scheduling adapter exists'
 );
 select ok(
   not has_function_privilege(
@@ -40,7 +46,9 @@ insert into public.clients (id, company_id, legal_name)
 values ('65000000-0000-4000-8000-000000000005', '60000000-0000-4000-8000-000000000001', 'SCHEDULING PROFILE CLIENT');
 
 insert into public.vehicles (id, company_id, plate)
-values ('66000000-0000-4000-8000-000000000006', '60000000-0000-4000-8000-000000000001', 'TST-DRV-01');
+values
+  ('66000000-0000-4000-8000-000000000006', '60000000-0000-4000-8000-000000000001', 'TST-DRV-01'),
+  ('66000000-0000-4000-8000-000000000011', '60000000-0000-4000-8000-000000000001', 'TST-DRV-02');
 
 insert into public.drivers (id, company_id, profile_id, display_name, current_status)
 values
@@ -75,8 +83,79 @@ select throws_ok(
 );
 select throws_ok(
   $$select public.schedule_trip(
-    '6d000000-0000-4000-8000-00000000000d',
+    '6c000000-0000-4000-8000-00000000000c',
     '66000000-0000-4000-8000-000000000006',
+    '67000000-0000-4000-8000-000000000007',
+    'driver_app'::public.trip_capture_mode
+  )$$,
+  '23514',
+  'Driver app mode requires an active linked driver profile',
+  'unlinked driver cannot be scheduled in driver app mode'
+);
+select lives_ok(
+  $$select public.schedule_trip(
+    '6c000000-0000-4000-8000-00000000000c',
+    '66000000-0000-4000-8000-000000000006',
+    '67000000-0000-4000-8000-000000000007',
+    'staff_assisted'::public.trip_capture_mode
+  )$$,
+  'unlinked driver can be scheduled for office operation'
+);
+select is(
+  (select capture_mode::text from public.trips where id = '6c000000-0000-4000-8000-00000000000c'),
+  'staff_assisted',
+  'office scheduling persists the exclusive capture mode'
+);
+select lives_ok(
+  $$select public.record_staff_trip_transition(
+    '71000000-0000-4000-8000-000000000011',
+    '6c000000-0000-4000-8000-00000000000c',
+    'start', 1200, false, now() - interval '3 minutes', 'loaded'::public.trip_load_state, 2,
+    'Despacho confirmó el inicio sin aplicación del conductor'
+  )$$,
+  'office can start a trip assigned to a driver without an app'
+);
+select lives_ok(
+  $$select public.record_staff_trip_load_state(
+    '72000000-0000-4000-8000-000000000012',
+    '6c000000-0000-4000-8000-00000000000c',
+    'empty'::public.trip_load_state, now() - interval '2 minutes', 1250, 4,
+    'La unidad quedó vacía tras descargar', '73000000-0000-4000-8000-000000000013'
+  )$$,
+  'office can record an auditable load-state change'
+);
+select lives_ok(
+  $$select public.record_staff_trip_transition(
+    '74000000-0000-4000-8000-000000000014',
+    '6c000000-0000-4000-8000-00000000000c',
+    'arrive', null, false, now() - interval '1 minute', null, 4,
+    'Despacho confirmó la llegada a descarga'
+  )$$,
+  'office can record arrival with its own actor'
+);
+select lives_ok(
+  $$select public.record_staff_trip_transition(
+    '75000000-0000-4000-8000-000000000015',
+    '6c000000-0000-4000-8000-00000000000c',
+    'complete', 1300, true, now() - interval '30 seconds', null, 5,
+    'Despacho confirmó la entrega y cierre'
+  )$$,
+  'office can complete the represented trip'
+);
+select is(
+  (select operational_status::text from public.trips where id = '6c000000-0000-4000-8000-00000000000c'),
+  'completed',
+  'office operation preserves the authoritative completed state'
+);
+select is(
+  (select current_status::text from public.drivers where id = '67000000-0000-4000-8000-000000000007'),
+  'available',
+  'represented completion restores the assigned driver availability'
+);
+select throws_ok(
+  $$select public.schedule_trip(
+    '6d000000-0000-4000-8000-00000000000d',
+    '66000000-0000-4000-8000-000000000011',
     '68000000-0000-4000-8000-000000000008'
   )$$,
   '23514',
@@ -106,7 +185,7 @@ select throws_ok(
 select lives_ok(
   $$select public.schedule_trip(
     '70000000-0000-4000-8000-000000000010',
-    '66000000-0000-4000-8000-000000000006',
+    '66000000-0000-4000-8000-000000000011',
     '6b000000-0000-4000-8000-00000000000b'
   )$$,
   'active available driver linked to an active driver profile is scheduled'

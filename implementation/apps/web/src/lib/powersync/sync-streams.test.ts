@@ -61,6 +61,7 @@ describe("PowerSync stream scope contract", () => {
     expect(streams).toContain("driver_assigned_data:");
     expect(streams).toContain("profile_id = auth.user_id()");
     expect(streams).toMatch(/SELECT id FROM trips\s+WHERE driver_id IN/u);
+    expect(streams).toContain("capture_mode, capture_mode_changed_at");
     expect(streams).toContain("FROM trip_transition_requests");
     expect(streams).toContain("WHERE actor_id = auth.user_id()");
   });

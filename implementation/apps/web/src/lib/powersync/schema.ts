@@ -112,6 +112,8 @@ const trips = new Table(
     scheduled_at: column.text,
     started_at: column.text,
     operational_finished_at: column.text,
+    capture_mode: column.text,
+    capture_mode_changed_at: column.text,
     operational_status: column.text,
     administrative_status: column.text,
     financial_status: column.text,

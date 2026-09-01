@@ -36,6 +36,9 @@ function trip(status: string, overrides: Partial<AdminTripRow> = {}): AdminTripR
     origin: "Lima",
     destination: "Arequipa",
     operationalStatus: status,
+    captureMode: "driver_app",
+    captureModeChangedAt: null,
+    driverHasAppAccess: false,
     freightAmount: 0,
     freightPricingMode: "total",
     freightRatePerTon: null,
@@ -83,19 +86,21 @@ describe("trip setup requirements", () => {
     expect(requirements[2]).toMatchObject({ id: "driver", ready: false });
   });
 
-  it("points to the access linkage when an available driver has no linked profile", () => {
+  it("keeps an available driver without app access eligible for office operation", () => {
     const requirements = getTripSetupRequirements({
       clients: [{ id: "client-a", label: "Cliente piloto", status: "Activo" }],
       vehicles: [{ id: "vehicle-a", label: "ABC-123", status: "Disponible" }],
-      drivers: [],
+      drivers: [
+        { id: "driver-a", label: "Conductor sin app", status: "Disponible", hasAppAccess: false },
+      ],
       registeredDrivers: 1,
       driversAwaitingAccess: 1,
     });
 
     expect(requirements[2]).toMatchObject({
-      ready: false,
-      href: "/configuracion/perfiles",
-      action: "Vincular acceso",
+      ready: true,
+      href: "/conductores",
+      action: "Gestionar conductores",
     });
   });
 });
@@ -134,12 +139,12 @@ describe("trip list controls", () => {
     expect(filterAndSortTrips(rows, "todos", "arequipa")).toHaveLength(4);
   });
 
-  it("chooses explicit actions without exposing driver-owned transitions", () => {
+  it("keeps active travel under an explicit manage action", () => {
     expect(tripPrimaryAction(trip("draft"))).toEqual({ label: "Aprobar", kind: "manage" });
     expect(tripPrimaryAction(trip("approved"))).toEqual({ label: "Programar", kind: "manage" });
     expect(tripPrimaryAction(trip("in_transit"))).toEqual({
-      label: "Ver seguimiento",
-      kind: "summary",
+      label: "Gestionar",
+      kind: "manage",
     });
   });
 });

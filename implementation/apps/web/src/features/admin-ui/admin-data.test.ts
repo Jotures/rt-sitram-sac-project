@@ -251,7 +251,20 @@ describe("Supabase admin data gateway", () => {
     await expect(gateway.loadTripSetupOptions()).resolves.toEqual({
       clients: [{ id: "client-active", label: "Cliente listo", status: "Activo" }],
       vehicles: [{ id: "vehicle-ready", label: "ABC-123", status: "Disponible" }],
-      drivers: [{ id: "driver-ready", label: "Conductor listo", status: "Disponible" }],
+      drivers: [
+        {
+          id: "driver-ready",
+          label: "Conductor listo",
+          status: "Disponible · App vinculada",
+          hasAppAccess: true,
+        },
+        {
+          id: "driver-unlinked",
+          label: "Conductor sin acceso",
+          status: "Disponible · Operación desde oficina",
+          hasAppAccess: false,
+        },
+      ],
       registeredDrivers: 3,
       driversAwaitingAccess: 1,
     });
@@ -261,6 +274,70 @@ describe("Supabase admin data gateway", () => {
     const { client, calls } = clientWithRpc();
     await createSupabaseAdminDataGateway(client).approveTrip({ tripId: "trip-a" });
     expect(calls).toEqual([{ name: "approve_trip", args: { trip_id: "trip-a" } }]);
+  });
+
+  it("uses auditable online-only commands for staff-assisted trip operation", async () => {
+    const { client, calls } = clientWithRpc();
+    const gateway = createSupabaseAdminDataGateway(client);
+
+    await gateway.scheduleTrip({
+      tripId: "trip-a",
+      vehicleId: "vehicle-a",
+      driverId: "driver-without-app",
+      captureMode: "staff_assisted",
+    });
+    await gateway.changeTripCaptureMode({
+      tripId: "trip-a",
+      captureMode: "staff_assisted",
+      version: 3,
+      reason: "El conductor no cuenta con la aplicación.",
+    });
+    await gateway.recordStaffTripTransition({
+      requestId: "transition-a",
+      tripId: "trip-a",
+      action: "start",
+      odometerKm: 1200,
+      cargoDelivered: false,
+      occurredAt: "2026-09-01T17:00:00.000Z",
+      loadState: "loaded",
+      version: 4,
+      reason: "Inicio confirmado por despacho.",
+    });
+
+    expect(calls).toEqual([
+      {
+        name: "schedule_trip",
+        args: {
+          trip_id: "trip-a",
+          vehicle_id: "vehicle-a",
+          driver_id: "driver-without-app",
+          capture_mode: "staff_assisted",
+        },
+      },
+      {
+        name: "change_trip_capture_mode",
+        args: {
+          p_trip_id: "trip-a",
+          p_capture_mode: "staff_assisted",
+          p_expected_version: 3,
+          p_reason: "El conductor no cuenta con la aplicación.",
+        },
+      },
+      {
+        name: "record_staff_trip_transition",
+        args: {
+          p_request_id: "transition-a",
+          p_trip_id: "trip-a",
+          p_action: "start",
+          p_odometer_km: 1200,
+          p_cargo_delivered: false,
+          p_occurred_at: "2026-09-01T17:00:00.000Z",
+          p_load_state: "loaded",
+          p_expected_version: 4,
+          p_reason: "Inicio confirmado por despacho.",
+        },
+      },
+    ]);
   });
 
   it("uses the two-argument start wrapper", async () => {
@@ -496,6 +573,7 @@ describe("Supabase admin data gateway", () => {
         tripId: "trip-a",
         vehicleId: "vehicle-a",
         driverId: "driver-a",
+        captureMode: "driver_app",
       }),
     ).rejects.toThrow("Vehicle has expired blocking documents");
   });

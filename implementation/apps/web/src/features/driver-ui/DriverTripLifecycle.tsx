@@ -37,6 +37,23 @@ export function DriverTripLifecycle({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  if (trip.capture_mode !== "driver_app") {
+    return (
+      <section className="driver-lifecycle" aria-labelledby="driver-lifecycle-title">
+        <div className="driver-lifecycle__heading">
+          <div>
+            <p className="driver-eyebrow">Operación desde oficina</p>
+            <h2 id="driver-lifecycle-title">Este viaje está en modo lectura</h2>
+          </div>
+        </div>
+        <p>
+          Gerencia o Administración está registrando la operación desde oficina. Puedes consultar la
+          ruta y el estado, pero no registrar movimientos hasta que te devuelvan el control en la
+          aplicación.
+        </p>
+      </section>
+    );
+  }
   const pendingActions = transitionRequests.data
     .map((item) => item.requested_action)
     .filter((action) => !isTransitionConfirmedByServer(trip.server_operational_status, action));

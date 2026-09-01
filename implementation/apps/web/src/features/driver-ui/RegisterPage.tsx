@@ -15,33 +15,54 @@ export function DriverRegisterPage(): React.JSX.Element {
         <div className="driver-state">
           No hay un viaje en ejecución. Las opciones se habilitarán al iniciar tu salida.
         </div>
+      ) : activeTrip.capture_mode !== "driver_app" ? (
+        <div className="driver-state">
+          La oficina controla este viaje. Tus registros están en modo lectura para evitar
+          duplicados.
+        </div>
       ) : null}
       <div
-        className={`driver-action-list ${activeTrip === null ? "driver-action-list--disabled" : ""}`}
+        className={`driver-action-list ${activeTrip === null || activeTrip.capture_mode !== "driver_app" ? "driver-action-list--disabled" : ""}`}
       >
         <DriverActionCard
           copy="Abastecimiento, kilometraje y monto"
           icon="fuel"
           label="Combustible"
-          to={activeTrip === null ? "/mi-viaje" : "/registrar/combustible"}
+          to={
+            activeTrip === null || activeTrip.capture_mode !== "driver_app"
+              ? "/mi-viaje"
+              : "/registrar/combustible"
+          }
         />
         <DriverActionCard
           copy="Peaje, comida, garaje u otro"
           icon="money"
           label="Gasto"
-          to={activeTrip === null ? "/mi-viaje" : "/registrar/gasto"}
+          to={
+            activeTrip === null || activeTrip.capture_mode !== "driver_app"
+              ? "/mi-viaje"
+              : "/registrar/gasto"
+          }
         />
         <DriverActionCard
           copy="Avería, retraso o problema de carga"
           icon="alert"
           label="Incidencia"
-          to={activeTrip === null ? "/mi-viaje" : "/registrar/incidencia"}
+          to={
+            activeTrip === null || activeTrip.capture_mode !== "driver_app"
+              ? "/mi-viaje"
+              : "/registrar/incidencia"
+          }
         />
         <DriverActionCard
           copy="Lectura actual o llegada"
           icon="gauge"
           label="Kilometraje"
-          to={activeTrip === null ? "/mi-viaje" : "/registrar/kilometraje"}
+          to={
+            activeTrip === null || activeTrip.capture_mode !== "driver_app"
+              ? "/mi-viaje"
+              : "/registrar/kilometraje"
+          }
         />
       </div>
     </div>

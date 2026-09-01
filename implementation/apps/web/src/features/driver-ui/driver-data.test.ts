@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isTripWritable } from "./driver-data";
+import { isDriverTripCaptureWritable, isTripWritable } from "./driver-data";
 
 const source = readFileSync(fileURLToPath(new URL("./driver-data.ts", import.meta.url)), "utf8");
 
@@ -24,5 +24,18 @@ describe("driver local data projection", () => {
 
   it("keeps the server status alongside the local projection", () => {
     expect(source).toContain("t.operational_status AS server_operational_status");
+    expect(source).toContain("t.capture_mode, t.capture_mode_changed_at");
+  });
+
+  it("blocks driver capture when office has taken the trip", () => {
+    expect(
+      isDriverTripCaptureWritable({
+        operational_status: "in_transit",
+        capture_mode: "staff_assisted",
+      }),
+    ).toBe(false);
+    expect(
+      isDriverTripCaptureWritable({ operational_status: "in_transit", capture_mode: "driver_app" }),
+    ).toBe(true);
   });
 });

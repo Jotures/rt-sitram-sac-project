@@ -68,7 +68,7 @@ export function DriverHomePage(): React.JSX.Element {
   const trips = useDriverTrips();
   const name = state.status === "READY" ? state.identity.profile.displayName : "Conductor";
   const registerGuidance = getDriverHomeRegisterGuidance(
-    trips.activeTrip !== null,
+    trips.activeTrip !== null && trips.activeTrip.capture_mode === "driver_app",
     trips.nextTrip !== null,
   );
 
@@ -150,7 +150,7 @@ export function DriverHomePage(): React.JSX.Element {
           </div>
           <small>{registerGuidance.copy}</small>
         </div>
-        {trips.activeTrip === null ? null : (
+        {trips.activeTrip === null || trips.activeTrip.capture_mode !== "driver_app" ? null : (
           <div className="driver-home-register__actions">
             {driverRegisterActions.map((action) => (
               <Link key={action.to} to={action.to}>
@@ -163,6 +163,12 @@ export function DriverHomePage(): React.JSX.Element {
             ))}
           </div>
         )}
+        {trips.activeTrip?.capture_mode === "staff_assisted" ? (
+          <p className="driver-authoritative-note" role="status">
+            La oficina controla este viaje. Los registros operativos están temporalmente bloqueados
+            para evitar duplicados.
+          </p>
+        ) : null}
       </section>
 
       <Link className="driver-sync-shortcut" to="/sincronizacion">

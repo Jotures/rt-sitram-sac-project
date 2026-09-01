@@ -34,6 +34,22 @@ function useActiveTripCapture() {
   return { ...trips, ...capture };
 }
 
+function OfficeCaptureBlocked(): React.JSX.Element {
+  return (
+    <div className="driver-page">
+      <DriverPageHeader
+        description="La oficina está registrando este viaje en línea para evitar información duplicada."
+        eyebrow="Operación desde oficina"
+        title="Registro temporalmente bloqueado"
+      />
+      <div className="driver-state">
+        Puedes consultar el viaje en Mi viaje. Las acciones volverán a estar disponibles si Gerencia
+        o Administración devuelve la captura a tu aplicación.
+      </div>
+    </div>
+  );
+}
+
 function EvidenceField({ onChange }: { readonly onChange: (file: File | null) => void }) {
   return (
     <DriverField
@@ -65,6 +81,7 @@ export function DriverFuelPage(): React.JSX.Element {
   if (context.isLoading) return <DriverLoadingState />;
   if (context.activeTrip === null || context.activeTrip.vehicle_id === null)
     return <NoActiveTrip />;
+  if (context.activeTrip.capture_mode !== "driver_app") return <OfficeCaptureBlocked />;
 
   const trip = context.activeTrip;
   const submit = async (event: FormEvent) => {
@@ -198,6 +215,7 @@ export function DriverExpensePage(): React.JSX.Element {
   const [file, setFile] = useState<File | null>(null);
   if (context.isLoading) return <DriverLoadingState />;
   if (context.activeTrip === null) return <NoActiveTrip />;
+  if (context.activeTrip.capture_mode !== "driver_app") return <OfficeCaptureBlocked />;
   const trip = context.activeTrip;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -307,6 +325,7 @@ export function DriverIncidentPage(): React.JSX.Element {
   if (context.isLoading) return <DriverLoadingState />;
   if (context.activeTrip === null || context.activeTrip.vehicle_id === null)
     return <NoActiveTrip />;
+  if (context.activeTrip.capture_mode !== "driver_app") return <OfficeCaptureBlocked />;
   const trip = context.activeTrip;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -429,6 +448,7 @@ export function DriverOdometerPage(): React.JSX.Element {
   if (context.isLoading) return <DriverLoadingState />;
   if (context.activeTrip === null || context.activeTrip.vehicle_id === null)
     return <NoActiveTrip />;
+  if (context.activeTrip.capture_mode !== "driver_app") return <OfficeCaptureBlocked />;
   const trip = context.activeTrip;
   const submit = async (event: FormEvent) => {
     event.preventDefault();

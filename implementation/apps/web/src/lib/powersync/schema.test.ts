@@ -163,6 +163,9 @@ describe("PowerSync product schema", () => {
       tables.get("expense_categories")?.columns.map((column) => column.name) ?? [];
 
     expect(tripColumns).toContain("cycle_id");
+    expect(tripColumns).toEqual(
+      expect.arrayContaining(["capture_mode", "capture_mode_changed_at"]),
+    );
     expect(tripColumns).not.toContain("return_status");
     expect(categoryColumns).not.toContain("cycle_id");
   });

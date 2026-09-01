@@ -93,6 +93,13 @@ export type Database = {
             foreignKeyName: "advances_trip_fk";
             columns: ["company_id", "trip_id"];
             isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "advances_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
             referencedRelation: "trips";
             referencedColumns: ["company_id", "id"];
           },
@@ -397,6 +404,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "files";
             referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "documents_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
           },
           {
             foreignKeyName: "documents_trip_fk";
@@ -715,6 +729,13 @@ export type Database = {
             foreignKeyName: "expenses_trip_fk";
             columns: ["company_id", "trip_id"];
             isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "expenses_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
             referencedRelation: "trips";
             referencedColumns: ["company_id", "id"];
           },
@@ -892,6 +913,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "suppliers";
             referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "fuel_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
           },
           {
             foreignKeyName: "fuel_trip_fk";
@@ -1696,6 +1724,13 @@ export type Database = {
             foreignKeyName: "incidents_trip_fk";
             columns: ["company_id", "trip_id"];
             isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "incidents_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
             referencedRelation: "trips";
             referencedColumns: ["company_id", "id"];
           },
@@ -1802,6 +1837,13 @@ export type Database = {
             foreignKeyName: "invoices_trip_fk";
             columns: ["company_id", "trip_id"];
             isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "invoices_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
             referencedRelation: "trips";
             referencedColumns: ["company_id", "id"];
           },
@@ -1851,6 +1893,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "companies";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "loads_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
           },
           {
             foreignKeyName: "loads_trip_fk";
@@ -1981,6 +2030,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "companies";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "odometer_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
           },
           {
             foreignKeyName: "odometer_trip_fk";
@@ -2218,6 +2274,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "invoices";
             referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "payments_invoice_fk";
+            columns: ["company_id", "invoice_id"];
+            isOneToOne: false;
+            referencedRelation: "report_collection_facts";
+            referencedColumns: ["company_id", "invoice_id"];
           },
         ];
       };
@@ -2466,6 +2529,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "settlements_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: true;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
           },
           {
             foreignKeyName: "settlements_trip_fk";
@@ -2824,6 +2894,97 @@ export type Database = {
           },
         ];
       };
+      trip_load_state_events: {
+        Row: {
+          company_id: string;
+          correction_reason: string | null;
+          created_at: string;
+          effective_at: string;
+          id: string;
+          idempotency_key: string;
+          load_state: Database["public"]["Enums"]["trip_load_state"];
+          odometer_km: number;
+          recorded_by: string;
+          source_device_id: string | null;
+          supersedes_event_id: string | null;
+          trip_id: string;
+          vehicle_id: string;
+        };
+        Insert: {
+          company_id: string;
+          correction_reason?: string | null;
+          created_at?: string;
+          effective_at: string;
+          id?: string;
+          idempotency_key: string;
+          load_state: Database["public"]["Enums"]["trip_load_state"];
+          odometer_km: number;
+          recorded_by: string;
+          source_device_id?: string | null;
+          supersedes_event_id?: string | null;
+          trip_id: string;
+          vehicle_id: string;
+        };
+        Update: {
+          company_id?: string;
+          correction_reason?: string | null;
+          created_at?: string;
+          effective_at?: string;
+          id?: string;
+          idempotency_key?: string;
+          load_state?: Database["public"]["Enums"]["trip_load_state"];
+          odometer_km?: number;
+          recorded_by?: string;
+          source_device_id?: string | null;
+          supersedes_event_id?: string | null;
+          trip_id?: string;
+          vehicle_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_load_state_event_actor_fk";
+            columns: ["company_id", "recorded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_event_supersedes_fk";
+            columns: ["company_id", "supersedes_event_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_load_state_events";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_event_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_event_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_event_vehicle_fk";
+            columns: ["company_id", "vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_events_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       trip_status_events: {
         Row: {
           actor_id: string;
@@ -2868,6 +3029,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_events_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
           },
           {
             foreignKeyName: "trip_events_trip_fk";
@@ -2937,6 +3105,13 @@ export type Database = {
             foreignKeyName: "transition_requests_trip_fk";
             columns: ["company_id", "trip_id"];
             isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "transition_requests_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
             referencedRelation: "trips";
             referencedColumns: ["company_id", "id"];
           },
@@ -2953,6 +3128,8 @@ export type Database = {
         Row: {
           additional_amount: number;
           administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -2984,6 +3161,8 @@ export type Database = {
         Insert: {
           additional_amount?: number;
           administrative_status?: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode?: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at?: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -3015,6 +3194,8 @@ export type Database = {
         Update: {
           additional_amount?: number;
           administrative_status?: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode?: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at?: string;
           client_id?: string;
           code?: string;
           company_id?: string;
@@ -3180,7 +3361,8 @@ export type Database = {
           ended_at: string | null;
           id: string;
           reason: string | null;
-          recorded_by: string;
+          recorded_by: string | null;
+          source: string;
           started_at: string;
           status: Database["public"]["Enums"]["vehicle_status"];
           vehicle_id: string;
@@ -3190,7 +3372,8 @@ export type Database = {
           ended_at?: string | null;
           id?: string;
           reason?: string | null;
-          recorded_by: string;
+          recorded_by?: string | null;
+          source?: string;
           started_at?: string;
           status: Database["public"]["Enums"]["vehicle_status"];
           vehicle_id: string;
@@ -3200,7 +3383,8 @@ export type Database = {
           ended_at?: string | null;
           id?: string;
           reason?: string | null;
-          recorded_by?: string;
+          recorded_by?: string | null;
+          source?: string;
           started_at?: string;
           status?: Database["public"]["Enums"]["vehicle_status"];
           vehicle_id?: string;
@@ -3348,6 +3532,13 @@ export type Database = {
             foreignKeyName: "work_order_evidence_order_fk";
             columns: ["company_id", "work_order_id"];
             isOneToOne: false;
+            referencedRelation: "report_maintenance_facts";
+            referencedColumns: ["company_id", "work_order_id"];
+          },
+          {
+            foreignKeyName: "work_order_evidence_order_fk";
+            columns: ["company_id", "work_order_id"];
+            isOneToOne: false;
             referencedRelation: "work_orders";
             referencedColumns: ["company_id", "id"];
           },
@@ -3405,6 +3596,13 @@ export type Database = {
             foreignKeyName: "work_order_parts_order_fk";
             columns: ["company_id", "work_order_id"];
             isOneToOne: false;
+            referencedRelation: "report_maintenance_facts";
+            referencedColumns: ["company_id", "work_order_id"];
+          },
+          {
+            foreignKeyName: "work_order_parts_order_fk";
+            columns: ["company_id", "work_order_id"];
+            isOneToOne: false;
             referencedRelation: "work_orders";
             referencedColumns: ["company_id", "id"];
           },
@@ -3432,6 +3630,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string;
+          currency: string;
           diagnosis: string | null;
           finished_at: string | null;
           id: string;
@@ -3457,6 +3656,7 @@ export type Database = {
           company_id: string;
           created_at?: string;
           created_by: string;
+          currency?: string;
           diagnosis?: string | null;
           finished_at?: string | null;
           id?: string;
@@ -3482,6 +3682,7 @@ export type Database = {
           company_id?: string;
           created_at?: string;
           created_by?: string;
+          currency?: string;
           diagnosis?: string | null;
           finished_at?: string | null;
           id?: string;
@@ -3533,6 +3734,291 @@ export type Database = {
       };
     };
     Views: {
+      report_collection_facts: {
+        Row: {
+          cancelled_at: string | null;
+          client_id: string | null;
+          client_name: string | null;
+          company_id: string | null;
+          currency: string | null;
+          due_on: string | null;
+          invoice_id: string | null;
+          issued_on: string | null;
+          number: string | null;
+          paid_at: string | null;
+          payment_amount: number | null;
+          payment_currency: string | null;
+          payment_id: string | null;
+          series: string | null;
+          status: Database["public"]["Enums"]["invoice_status"] | null;
+          total: number | null;
+          trip_id: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_fk";
+            columns: ["company_id", "client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "invoices_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "invoices_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      report_distance_segments: {
+        Row: {
+          company_id: string | null;
+          coverage_gap: string | null;
+          end_odometer_km: number | null;
+          kilometres: number | null;
+          load_state: Database["public"]["Enums"]["trip_load_state"] | null;
+          operational_finished_at: string | null;
+          start_odometer_km: number | null;
+          trip_id: string | null;
+          vehicle_id: string | null;
+          vehicle_plate: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trip_load_state_event_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_event_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_event_vehicle_fk";
+            columns: ["company_id", "vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trip_load_state_events_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      report_fuel_facts: {
+        Row: {
+          company_id: string | null;
+          completed_distance_km: number | null;
+          currency: string | null;
+          fuel_entry_id: string | null;
+          fueled_at: string | null;
+          odometer_km: number | null;
+          operational_finished_at: string | null;
+          quantity: number | null;
+          total_amount: number | null;
+          trip_id: string | null;
+          validation_status: Database["public"]["Enums"]["validation_status"] | null;
+          vehicle_id: string | null;
+          vehicle_plate: string | null;
+          volume_unit: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fuel_entries_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fuel_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "report_trip_facts";
+            referencedColumns: ["company_id", "trip_id"];
+          },
+          {
+            foreignKeyName: "fuel_trip_fk";
+            columns: ["company_id", "trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "fuel_vehicle_fk";
+            columns: ["company_id", "vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      report_maintenance_facts: {
+        Row: {
+          admitted_at: string | null;
+          blocks_operation: boolean | null;
+          code: string | null;
+          company_id: string | null;
+          cost: number | null;
+          currency: string | null;
+          finished_at: string | null;
+          immobilized_hours: number | null;
+          maintenance_type: string | null;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["work_order_status"] | null;
+          vehicle_id: string | null;
+          vehicle_plate: string | null;
+          work_order_id: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "work_orders_vehicle_fk";
+            columns: ["company_id", "vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      report_trip_facts: {
+        Row: {
+          administrative_status: Database["public"]["Enums"]["trip_administrative_status"] | null;
+          client_id: string | null;
+          client_name: string | null;
+          company_id: string | null;
+          completed_distance_km: number | null;
+          contracted_revenue: number | null;
+          currency: string | null;
+          cycle_id: string | null;
+          destination: string | null;
+          direct_cost: number | null;
+          driver_id: string | null;
+          driver_name: string | null;
+          expense_cost: number | null;
+          final_km: number | null;
+          financial_status: Database["public"]["Enums"]["trip_financial_status"] | null;
+          fuel_cost: number | null;
+          has_currency_mismatch: boolean | null;
+          missing_tons: number | null;
+          operational_finished_at: string | null;
+          operational_status: Database["public"]["Enums"]["trip_operational_status"] | null;
+          origin: string | null;
+          pending_cost_records: number | null;
+          route_id: string | null;
+          settlement_closed: boolean | null;
+          start_km: number | null;
+          started_at: string | null;
+          tons: number | null;
+          trip_code: string | null;
+          trip_id: string | null;
+          vehicle_id: string | null;
+          vehicle_plate: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trips_client_fk";
+            columns: ["company_id", "client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trips_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trips_cycle_fk";
+            columns: ["company_id", "cycle_id"];
+            isOneToOne: false;
+            referencedRelation: "operational_cycles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trips_driver_fk";
+            columns: ["company_id", "driver_id"];
+            isOneToOne: false;
+            referencedRelation: "drivers";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trips_route_fk";
+            columns: ["company_id", "route_id"];
+            isOneToOne: false;
+            referencedRelation: "routes";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "trips_vehicle_fk";
+            columns: ["company_id", "vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      report_vehicle_status_intervals: {
+        Row: {
+          company_id: string | null;
+          ended_at: string | null;
+          id: string | null;
+          reason: string | null;
+          source: string | null;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["vehicle_status"] | null;
+          vehicle_id: string | null;
+          vehicle_plate: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_status_history_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "vehicle_status_vehicle_fk";
+            columns: ["company_id", "vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
       vehicle_gps_context: {
         Row: {
           ignition: boolean | null;
@@ -3608,6 +4094,8 @@ export type Database = {
         Returns: {
           additional_amount: number;
           administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -3656,6 +4144,8 @@ export type Database = {
         Returns: {
           additional_amount: number;
           administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -3696,6 +4186,8 @@ export type Database = {
         Returns: {
           additional_amount: number;
           administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -3855,6 +4347,53 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      change_trip_capture_mode: {
+        Args: {
+          p_capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          p_expected_version: number;
+          p_reason: string;
+          p_trip_id: string;
+        };
+        Returns: {
+          additional_amount: number;
+          administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
+          client_id: string;
+          code: string;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          cycle_id: string | null;
+          cycle_leg_kind: Database["public"]["Enums"]["operational_cycle_leg_kind"] | null;
+          cycle_sequence: number | null;
+          destination: string;
+          driver_id: string | null;
+          financial_status: Database["public"]["Enums"]["trip_financial_status"];
+          financially_closed_at: string | null;
+          freight_amount: number;
+          freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"];
+          freight_rate_per_ton: number | null;
+          id: string;
+          notes: string | null;
+          operational_finished_at: string | null;
+          operational_status: Database["public"]["Enums"]["trip_operational_status"];
+          origin: string;
+          route_id: string | null;
+          scheduled_at: string;
+          started_at: string | null;
+          updated_at: string;
+          vehicle_id: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "trips";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       close_settlement:
         | {
             Args: { p_expected_version: number; p_settlement_id: string };
@@ -3943,6 +4482,8 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -3987,6 +4528,8 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -4036,6 +4579,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string;
+          currency: string;
           diagnosis: string | null;
           finished_at: string | null;
           id: string;
@@ -4246,6 +4790,8 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -4296,6 +4842,8 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -4350,6 +4898,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string;
+          currency: string;
           diagnosis: string | null;
           finished_at: string | null;
           id: string;
@@ -4448,6 +4997,31 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      get_report_dossier_snapshot: {
+        Args: {
+          p_client_id?: string;
+          p_driver_id?: string;
+          p_from: string;
+          p_kinds: string[];
+          p_route_id?: string;
+          p_to: string;
+          p_vehicle_id?: string;
+        };
+        Returns: Json;
+      };
+      get_report_filter_options: { Args: never; Returns: Json };
+      get_report_snapshot: {
+        Args: {
+          p_client_id?: string;
+          p_driver_id?: string;
+          p_from: string;
+          p_kind: string;
+          p_route_id?: string;
+          p_to: string;
+          p_vehicle_id?: string;
+        };
+        Returns: Json;
       };
       heartbeat_gps_sync_run: {
         Args: { p_lease_seconds: number; p_run_id: string };
@@ -4593,21 +5167,6 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      manage_company_profile_access: {
-        Args: {
-          p_action: string;
-          p_next_role?: Database["public"]["Enums"]["app_role"] | null;
-          p_profile_id: string;
-          p_reason?: string | null;
-        };
-        Returns: Database["public"]["Tables"]["profiles"]["Row"];
-        SetofOptions: {
-          from: "*";
-          to: "profiles";
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
       link_gps_vehicle: {
         Args: {
           p_external_asset_id: string;
@@ -4634,6 +5193,29 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "gps_provider_vehicle_links";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      manage_company_profile_access: {
+        Args: {
+          p_action: string;
+          p_next_role?: Database["public"]["Enums"]["app_role"];
+          p_profile_id: string;
+          p_reason?: string;
+        };
+        Returns: {
+          active: boolean;
+          company_id: string;
+          created_at: string;
+          display_name: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "profiles";
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -4774,6 +5356,10 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      record_report_export: {
+        Args: { p_filters: Json; p_format: string; p_kind: string };
+        Returns: string;
+      };
       record_staff_trip_expense: {
         Args: {
           p_amount: number;
@@ -4875,6 +5461,201 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      record_staff_trip_incident: {
+        Args: {
+          p_action_taken: string;
+          p_description: string;
+          p_estimated_cost: number;
+          p_expected_version: number;
+          p_file_id: string;
+          p_id: string;
+          p_idempotency_key: string;
+          p_incident_type: string;
+          p_location: string;
+          p_occurred_at: string;
+          p_reason: string;
+          p_severity: Database["public"]["Enums"]["incident_severity"];
+          p_trip_id: string;
+        };
+        Returns: {
+          action_taken: string | null;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          description: string;
+          driver_id: string | null;
+          estimated_cost: number | null;
+          file_id: string | null;
+          id: string;
+          idempotency_key: string | null;
+          incident_type: string;
+          location: string | null;
+          occurred_at: string;
+          severity: Database["public"]["Enums"]["incident_severity"];
+          source_device_id: string | null;
+          status: Database["public"]["Enums"]["incident_status"];
+          trip_id: string | null;
+          updated_at: string;
+          vehicle_id: string | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "incidents";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_staff_trip_load_state: {
+        Args: {
+          p_effective_at: string;
+          p_expected_version: number;
+          p_id: string;
+          p_idempotency_key: string;
+          p_load_state: Database["public"]["Enums"]["trip_load_state"];
+          p_odometer_km: number;
+          p_reason: string;
+          p_trip_id: string;
+        };
+        Returns: {
+          company_id: string;
+          correction_reason: string | null;
+          created_at: string;
+          effective_at: string;
+          id: string;
+          idempotency_key: string;
+          load_state: Database["public"]["Enums"]["trip_load_state"];
+          odometer_km: number;
+          recorded_by: string;
+          source_device_id: string | null;
+          supersedes_event_id: string | null;
+          trip_id: string;
+          vehicle_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "trip_load_state_events";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_staff_trip_odometer_entry: {
+        Args: {
+          p_expected_version: number;
+          p_id: string;
+          p_idempotency_key: string;
+          p_reading_at: string;
+          p_reading_km: number;
+          p_reading_type: string;
+          p_reason: string;
+          p_trip_id: string;
+        };
+        Returns: {
+          company_id: string;
+          created_at: string;
+          id: string;
+          idempotency_key: string | null;
+          reading_at: string;
+          reading_km: number;
+          reading_type: string;
+          recorded_by: string;
+          source: string;
+          source_device_id: string | null;
+          trip_id: string | null;
+          vehicle_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "odometer_entries";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_staff_trip_transition: {
+        Args: {
+          p_action: string;
+          p_cargo_delivered: boolean;
+          p_expected_version: number;
+          p_load_state: Database["public"]["Enums"]["trip_load_state"];
+          p_occurred_at: string;
+          p_odometer_km: number;
+          p_reason: string;
+          p_request_id: string;
+          p_trip_id: string;
+        };
+        Returns: {
+          additional_amount: number;
+          administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
+          client_id: string;
+          code: string;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          cycle_id: string | null;
+          cycle_leg_kind: Database["public"]["Enums"]["operational_cycle_leg_kind"] | null;
+          cycle_sequence: number | null;
+          destination: string;
+          driver_id: string | null;
+          financial_status: Database["public"]["Enums"]["trip_financial_status"];
+          financially_closed_at: string | null;
+          freight_amount: number;
+          freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"];
+          freight_rate_per_ton: number | null;
+          id: string;
+          notes: string | null;
+          operational_finished_at: string | null;
+          operational_status: Database["public"]["Enums"]["trip_operational_status"];
+          origin: string;
+          route_id: string | null;
+          scheduled_at: string;
+          started_at: string | null;
+          updated_at: string;
+          vehicle_id: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "trips";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_trip_load_state_event: {
+        Args: {
+          p_correction_reason?: string;
+          p_effective_at: string;
+          p_id: string;
+          p_idempotency_key: string;
+          p_load_state: Database["public"]["Enums"]["trip_load_state"];
+          p_odometer_km: number;
+          p_source_device_id: string;
+          p_supersedes_event_id?: string;
+          p_trip_id: string;
+        };
+        Returns: {
+          company_id: string;
+          correction_reason: string | null;
+          created_at: string;
+          effective_at: string;
+          id: string;
+          idempotency_key: string;
+          load_state: Database["public"]["Enums"]["trip_load_state"];
+          odometer_km: number;
+          recorded_by: string;
+          source_device_id: string | null;
+          supersedes_event_id: string | null;
+          trip_id: string;
+          vehicle_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "trip_load_state_events";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       record_work_order_part: {
         Args: {
           p_id: string;
@@ -4964,6 +5745,8 @@ export type Database = {
         Returns: {
           additional_amount: number;
           administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -5220,6 +6003,56 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
+              client_id: string;
+              code: string;
+              company_id: string;
+              created_at: string;
+              created_by: string;
+              currency: string;
+              cycle_id: string | null;
+              cycle_leg_kind: Database["public"]["Enums"]["operational_cycle_leg_kind"] | null;
+              cycle_sequence: number | null;
+              destination: string;
+              driver_id: string | null;
+              financial_status: Database["public"]["Enums"]["trip_financial_status"];
+              financially_closed_at: string | null;
+              freight_amount: number;
+              freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"];
+              freight_rate_per_ton: number | null;
+              id: string;
+              notes: string | null;
+              operational_finished_at: string | null;
+              operational_status: Database["public"]["Enums"]["trip_operational_status"];
+              origin: string;
+              route_id: string | null;
+              scheduled_at: string;
+              started_at: string | null;
+              updated_at: string;
+              vehicle_id: string | null;
+              version: number;
+            };
+            SetofOptions: {
+              from: "*";
+              to: "trips";
+              isOneToOne: true;
+              isSetofReturn: false;
+            };
+          }
+        | {
+            Args: {
+              p_capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              p_driver_id: string;
+              p_expected_version: number;
+              p_trip_id: string;
+              p_vehicle_id: string;
+            };
+            Returns: {
+              additional_amount: number;
+              administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -5260,6 +6093,55 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
+              client_id: string;
+              code: string;
+              company_id: string;
+              created_at: string;
+              created_by: string;
+              currency: string;
+              cycle_id: string | null;
+              cycle_leg_kind: Database["public"]["Enums"]["operational_cycle_leg_kind"] | null;
+              cycle_sequence: number | null;
+              destination: string;
+              driver_id: string | null;
+              financial_status: Database["public"]["Enums"]["trip_financial_status"];
+              financially_closed_at: string | null;
+              freight_amount: number;
+              freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"];
+              freight_rate_per_ton: number | null;
+              id: string;
+              notes: string | null;
+              operational_finished_at: string | null;
+              operational_status: Database["public"]["Enums"]["trip_operational_status"];
+              origin: string;
+              route_id: string | null;
+              scheduled_at: string;
+              started_at: string | null;
+              updated_at: string;
+              vehicle_id: string | null;
+              version: number;
+            };
+            SetofOptions: {
+              from: "*";
+              to: "trips";
+              isOneToOne: true;
+              isSetofReturn: false;
+            };
+          }
+        | {
+            Args: {
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              driver_id: string;
+              trip_id: string;
+              vehicle_id: string;
+            };
+            Returns: {
+              additional_amount: number;
+              administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -5329,6 +6211,36 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      set_vehicle_operational_status: {
+        Args: {
+          p_reason: string;
+          p_status: Database["public"]["Enums"]["vehicle_status"];
+          p_vehicle_id: string;
+        };
+        Returns: {
+          active: boolean;
+          capacity_tons: number | null;
+          company_id: string;
+          created_at: string;
+          current_odometer_km: number;
+          current_status: Database["public"]["Enums"]["vehicle_status"];
+          id: string;
+          make: string | null;
+          model: string | null;
+          model_year: number | null;
+          notes: string | null;
+          owner_name: string | null;
+          ownership_type: Database["public"]["Enums"]["vehicle_ownership_type"] | null;
+          plate: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "vehicles";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       start_trip:
         | {
             Args: {
@@ -5340,6 +6252,8 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -5380,6 +6294,8 @@ export type Database = {
             Returns: {
               additional_amount: number;
               administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+              capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+              capture_mode_changed_at: string;
               client_id: string;
               code: string;
               company_id: string;
@@ -5449,6 +6365,8 @@ export type Database = {
         Returns: {
           additional_amount: number;
           administrative_status: Database["public"]["Enums"]["trip_administrative_status"];
+          capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
+          capture_mode_changed_at: string;
           client_id: string;
           code: string;
           company_id: string;
@@ -5712,6 +6630,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string;
+          currency: string;
           diagnosis: string | null;
           finished_at: string | null;
           id: string;
@@ -5787,6 +6706,7 @@ export type Database = {
         | "settlement_review"
         | "settlement_observed"
         | "settlement_closed";
+      trip_capture_mode: "driver_app" | "staff_assisted";
       trip_evaluation_exception_status: "PENDING" | "APPROVED";
       trip_evaluation_margin_basis: "REVENUE" | "COST";
       trip_evaluation_scenario: "CONSERVATIVE" | "PROBABLE" | "FAVORABLE";
@@ -5798,6 +6718,7 @@ export type Database = {
         | "partially_paid"
         | "paid"
         | "financially_closed";
+      trip_load_state: "loaded" | "empty";
       trip_operational_status:
         | "draft"
         | "approved"
@@ -6000,12 +6921,14 @@ export const Constants = {
         "settlement_observed",
         "settlement_closed",
       ],
+      trip_capture_mode: ["driver_app", "staff_assisted"],
       trip_evaluation_exception_status: ["PENDING", "APPROVED"],
       trip_evaluation_margin_basis: ["REVENUE", "COST"],
       trip_evaluation_scenario: ["CONSERVATIVE", "PROBABLE", "FAVORABLE"],
       trip_evaluation_status: ["DRAFT", "EXCEPTION_REQUIRED", "FIXED"],
       trip_evaluation_tax_basis: ["INCLUDED", "EXCLUDED"],
       trip_financial_status: ["unbilled", "billed", "partially_paid", "paid", "financially_closed"],
+      trip_load_state: ["loaded", "empty"],
       trip_operational_status: [
         "draft",
         "approved",

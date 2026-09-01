@@ -2314,16 +2314,10 @@ export function getTripSetupRequirements(
       title: "Conductor",
       copy:
         options.drivers.length > 0
-          ? `${options.drivers.length} conductor(es) disponible(s) con acceso vinculado.`
+          ? `${options.drivers.length} conductor(es) disponible(s); quienes no tienen app se operan desde oficina.`
           : driverSetupCopy(options),
-      href:
-        options.driversAwaitingAccess && options.driversAwaitingAccess > 0
-          ? routePaths.profileSettings
-          : routePaths.drivers,
-      action:
-        options.driversAwaitingAccess && options.driversAwaitingAccess > 0
-          ? "Vincular acceso"
-          : "Gestionar conductores",
+      href: routePaths.drivers,
+      action: "Gestionar conductores",
       ready: options.drivers.length > 0,
     },
   ];
@@ -2333,10 +2327,9 @@ function driverSetupCopy(
   options: Partial<Pick<AdminTripSetupOptions, "registeredDrivers" | "driversAwaitingAccess">>,
 ): string {
   if ((options.driversAwaitingAccess ?? 0) > 0)
-    return `${options.driversAwaitingAccess} conductor(es) disponible(s) todavía no tienen un acceso de Conductor vinculado.`;
-  if ((options.registeredDrivers ?? 0) > 0)
-    return "No hay un conductor activo y disponible con acceso vinculado.";
-  return "Registra un conductor y vincula su acceso antes de programar el viaje.";
+    return `${options.driversAwaitingAccess} conductor(es) no tienen acceso a la app, pero puedes programarlos en modo oficina.`;
+  if ((options.registeredDrivers ?? 0) > 0) return "No hay un conductor activo y disponible.";
+  return "Registra un conductor activo y disponible antes de programar el viaje.";
 }
 
 function TripSetupGuide({
@@ -2531,8 +2524,8 @@ function TripsPage({
   const title = mode === "scheduling" ? "Programación" : "Viajes";
   const description =
     mode === "scheduling"
-      ? "Asigna recursos solo a viajes aprobados; la operación continúa en la PWA del conductor."
-      : "Crea, aprueba y programa servicios antes de entregarlos a la operación del conductor.";
+      ? "Asigna recursos y define si la operación se capturará desde la app o desde oficina."
+      : "Crea, aprueba, programa y supervisa servicios con app del conductor u operación desde oficina.";
   const view = tripViewFromSearch(searchParams.toString());
   const query = searchParams.get("q") ?? "";
   const updateFilters = (nextView: TripListView, nextQuery: string): void => {
@@ -2603,7 +2596,7 @@ function TripsPage({
       {selected === null ? null : (
         <AdminActionDialog
           title={`Gestionar ${selected.title}`}
-          copy="Completa la preparación administrativa; la ejecución operativa corresponde al conductor asignado."
+          copy="Define el modo de captura y registra, cuando corresponda, la operación real sin suplantar al conductor asignado."
           onClose={() => setSelected(null)}
         >
           <TripActionPanel
@@ -2637,8 +2630,16 @@ function TripActionPanel({
   const [currentTrip, setCurrentTrip] = useState(trip);
   useEffect(() => setCurrentTrip(trip), [trip]);
 
-  function moveTo(next: Pick<AdminTripRow, "operationalStatus" | "status">): void {
-    setCurrentTrip((previous) => ({ ...previous, ...next, version: previous.version + 1 }));
+  function moveTo(
+    next: Pick<AdminTripRow, "operationalStatus" | "status"> &
+      Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
+    versionDelta = 1,
+  ): void {
+    setCurrentTrip((previous) => ({
+      ...previous,
+      ...next,
+      version: previous.version + versionDelta,
+    }));
     onChanged();
   }
 
@@ -2694,6 +2695,7 @@ function TripActionPanel({
                   tripId: currentTrip.id,
                   vehicleId: textValue(form, "vehicleId"),
                   driverId: textValue(form, "driverId"),
+                  captureMode: scheduleCaptureMode(form, options.drivers),
                 });
               } catch (caught) {
                 throw new Error(scheduleTripErrorMessage(caught));
@@ -2708,13 +2710,21 @@ function TripActionPanel({
               required
             />
             <SelectField
-              label="Conductor con acceso vinculado"
+              label="Conductor disponible"
               name="driverId"
               options={options.drivers}
               required
             />
+            <SelectField
+              defaultValue="driver_app"
+              label="Modo de operación"
+              name="captureMode"
+              options={tripCaptureModeOptions}
+              required
+            />
             <p className="admin-form-note">
-              Antes de confirmar, el servidor vuelve a validar documentos, mantenimiento,
+              Si el conductor no tiene una app vinculada, se programará obligatoriamente como
+              operación desde oficina. El servidor vuelve a validar documentos, mantenimiento,
               disponibilidad y cruces de programación.
             </p>
           </SimpleForm>
@@ -2723,10 +2733,18 @@ function TripActionPanel({
         )
       ) : null}
       {currentTrip.operationalStatus === "scheduled" ? (
-        <TripScheduledHandoff trip={currentTrip} />
+        currentTrip.captureMode === "staff_assisted" ? (
+          <OfficeTripConsole gateway={gateway} trip={currentTrip} onChanged={moveTo} />
+        ) : (
+          <TripScheduledHandoff gateway={gateway} trip={currentTrip} onChanged={moveTo} />
+        )
       ) : null}
       {["loading", "in_transit", "unloading"].includes(currentTrip.operationalStatus) ? (
-        <TripDriverOwnedNotice trip={currentTrip} />
+        currentTrip.captureMode === "staff_assisted" ? (
+          <OfficeTripConsole gateway={gateway} trip={currentTrip} onChanged={moveTo} />
+        ) : (
+          <TripDriverOwnedNotice gateway={gateway} trip={currentTrip} onChanged={moveTo} />
+        )
       ) : null}
       {!["draft", "approved", "scheduled", "loading", "in_transit", "unloading"].includes(
         currentTrip.operationalStatus,
@@ -2773,7 +2791,41 @@ function TripSchedulingBlocked({
   );
 }
 
-function TripScheduledHandoff({ trip }: { readonly trip: AdminTripRow }): React.JSX.Element {
+const tripCaptureModeOptions: readonly AdminOption[] = [
+  {
+    id: "driver_app",
+    label: "App del conductor",
+    status: "El conductor captura incluso sin conexión",
+  },
+  {
+    id: "staff_assisted",
+    label: "Operación desde oficina",
+    status: "Gerencia o Administración captura en línea",
+  },
+];
+
+function scheduleCaptureMode(
+  form: FormData,
+  drivers: readonly { readonly id: string; readonly hasAppAccess?: boolean }[],
+): "driver_app" | "staff_assisted" {
+  const selectedDriver = drivers.find((driver) => driver.id === textValue(form, "driverId"));
+  if (selectedDriver?.hasAppAccess === false) return "staff_assisted";
+  return textValue(form, "captureMode") === "staff_assisted" ? "staff_assisted" : "driver_app";
+}
+
+function TripScheduledHandoff({
+  gateway,
+  trip,
+  onChanged,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly trip: AdminTripRow;
+  readonly onChanged: (
+    next: Pick<AdminTripRow, "operationalStatus" | "status"> &
+      Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
+    versionDelta?: number,
+  ) => void;
+}): React.JSX.Element {
   return (
     <section className="admin-trip-setup__success" aria-live="polite" role="status">
       <Icon name="route" size={19} />
@@ -2781,9 +2833,11 @@ function TripScheduledHandoff({ trip }: { readonly trip: AdminTripRow }): React.
         <strong>Viaje programado.</strong>
         <p>
           El conductor asignado debe verlo en Mi viaje y registrar la operación desde su PWA,
-          incluso cuando esté sin conexión.
+          incluso cuando esté sin conexión. Puedes tomar la captura desde oficina si cambia la
+          condición operativa.
         </p>
       </div>
+      <CaptureModeChangeForm gateway={gateway} trip={trip} onChanged={onChanged} />
       <Link className="admin-text-link" to={tripSummaryPath(trip.id)}>
         Ver expediente
         <Icon name="chevron" size={16} />
@@ -2792,15 +2846,28 @@ function TripScheduledHandoff({ trip }: { readonly trip: AdminTripRow }): React.
   );
 }
 
-function TripDriverOwnedNotice({ trip }: { readonly trip: AdminTripRow }): React.JSX.Element {
+function TripDriverOwnedNotice({
+  gateway,
+  trip,
+  onChanged,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly trip: AdminTripRow;
+  readonly onChanged: (
+    next: Pick<AdminTripRow, "operationalStatus" | "status"> &
+      Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
+  ) => void;
+}): React.JSX.Element {
   return (
     <section className="admin-card admin-trip-setup__blocked" aria-labelledby="trip-driver-owned">
       <p className="admin-section-kicker">Operación del conductor</p>
       <h3 id="trip-driver-owned">La etapa actual se registra desde Mi viaje</h3>
       <p>
         El conductor asignado registra inicio, llegada, entrega, kilometraje, gastos y evidencias.
-        Administración puede consultar el expediente sin duplicar esas acciones.
+        Si el conductor no puede continuar con su aplicación, cambia el modo con un motivo y la
+        oficina podrá registrar el ciclo completo en línea.
       </p>
+      <CaptureModeChangeForm gateway={gateway} trip={trip} onChanged={onChanged} />
       <Link className="admin-text-link" to={tripSummaryPath(trip.id)}>
         Consultar expediente
         <Icon name="chevron" size={16} />
@@ -2808,6 +2875,373 @@ function TripDriverOwnedNotice({ trip }: { readonly trip: AdminTripRow }): React
     </section>
   );
 }
+
+function CaptureModeChangeForm({
+  gateway,
+  trip,
+  onChanged,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly trip: AdminTripRow;
+  readonly onChanged: (
+    next: Pick<AdminTripRow, "operationalStatus" | "status"> &
+      Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
+  ) => void;
+}): React.JSX.Element {
+  const target = trip.captureMode === "driver_app" ? "staff_assisted" : "driver_app";
+  const label =
+    target === "staff_assisted"
+      ? "Tomar operación desde oficina"
+      : "Devolver a la app del conductor";
+  return (
+    <SimpleForm
+      compact
+      description="Este cambio es inmediato, se audita con tu usuario y bloquea el canal anterior para evitar doble captura."
+      submitLabel={label}
+      title="Cambiar modo de operación"
+      onSubmit={(form) =>
+        gateway.changeTripCaptureMode({
+          tripId: trip.id,
+          captureMode: target,
+          version: trip.version,
+          reason: textValue(form, "reason"),
+        })
+      }
+      onSaved={() =>
+        onChanged({
+          operationalStatus: trip.operationalStatus,
+          status: trip.status,
+          captureMode: target,
+          captureModeChangedAt: new Date().toISOString(),
+        })
+      }
+    >
+      <TextareaField label="Motivo del cambio" name="reason" required />
+    </SimpleForm>
+  );
+}
+
+function OfficeTripConsole({
+  gateway,
+  trip,
+  onChanged,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly trip: AdminTripRow;
+  readonly onChanged: (
+    next: Pick<AdminTripRow, "operationalStatus" | "status"> &
+      Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
+    versionDelta?: number,
+  ) => void;
+}): React.JSX.Element {
+  const stamp = (): string => localDateTimeInputValue();
+  const transition = (
+    action: "start" | "arrive" | "complete",
+    form: FormData,
+    extra: {
+      readonly odometerKm: number | null;
+      readonly cargoDelivered: boolean;
+      readonly loadState: "loaded" | "empty" | null;
+    },
+  ): Promise<void> =>
+    gateway.recordStaffTripTransition({
+      requestId: crypto.randomUUID(),
+      tripId: trip.id,
+      action,
+      odometerKm: extra.odometerKm,
+      cargoDelivered: extra.cargoDelivered,
+      occurredAt: dateTimeValue(form, "occurredAt"),
+      loadState: extra.loadState,
+      version: trip.version,
+      reason: textValue(form, "reason"),
+    });
+  return (
+    <section className="admin-card admin-action-panel" aria-labelledby="office-trip-console-title">
+      <div>
+        <p className="admin-section-kicker">Operación desde oficina · en línea</p>
+        <h3 id="office-trip-console-title">Consola operativa</h3>
+        <p>
+          Registras como{" "}
+          {trip.captureMode === "staff_assisted" ? "Gerencia o Administración" : "oficina"}; el
+          conductor asignado se conserva como responsable del viaje.
+        </p>
+      </div>
+      <CaptureModeChangeForm gateway={gateway} trip={trip} onChanged={onChanged} />
+      {trip.operationalStatus === "scheduled" ? (
+        <SimpleForm
+          compact
+          description="Registra la hora real, lectura de odómetro y condición de carga antes de iniciar."
+          submitLabel="Iniciar viaje"
+          title="Inicio"
+          onSubmit={(form) =>
+            transition("start", form, {
+              odometerKm: numberValue(form, "odometerKm"),
+              cargoDelivered: false,
+              loadState: textValue(form, "loadState") === "empty" ? "empty" : "loaded",
+            })
+          }
+          onSaved={() => onChanged({ operationalStatus: "in_transit", status: "En tránsito" }, 2)}
+        >
+          <Field
+            defaultValue={stamp()}
+            label="Fecha y hora real"
+            name="occurredAt"
+            required
+            type="datetime-local"
+          />
+          <Field
+            label="Kilometraje inicial"
+            min="0"
+            name="odometerKm"
+            required
+            step="0.01"
+            type="number"
+          />
+          <SelectField
+            label="Condición de carga"
+            name="loadState"
+            options={loadStateOptions}
+            required
+          />
+          <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+        </SimpleForm>
+      ) : null}
+      {trip.operationalStatus === "in_transit" ? (
+        <>
+          <SimpleForm
+            compact
+            submitLabel="Confirmar llegada"
+            title="Llegada a descarga"
+            onSubmit={(form) =>
+              transition("arrive", form, {
+                odometerKm: null,
+                cargoDelivered: false,
+                loadState: null,
+              })
+            }
+            onSaved={() => onChanged({ operationalStatus: "unloading", status: "En descarga" })}
+          >
+            <Field
+              defaultValue={stamp()}
+              label="Fecha y hora real"
+              name="occurredAt"
+              required
+              type="datetime-local"
+            />
+            <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+          </SimpleForm>
+          <OfficeLoadStateForm gateway={gateway} trip={trip} onChanged={onChanged} />
+        </>
+      ) : null}
+      {trip.operationalStatus === "unloading" ? (
+        <>
+          <OfficeLoadStateForm gateway={gateway} trip={trip} onChanged={onChanged} />
+          <SimpleForm
+            compact
+            submitLabel="Completar viaje"
+            title="Entrega y cierre"
+            onSubmit={(form) =>
+              transition("complete", form, {
+                odometerKm: numberValue(form, "odometerKm"),
+                cargoDelivered: booleanValue(form, "cargoDelivered"),
+                loadState: null,
+              })
+            }
+            onSaved={() => onChanged({ operationalStatus: "completed", status: "Completado" })}
+          >
+            <Field
+              defaultValue={stamp()}
+              label="Fecha y hora real"
+              name="occurredAt"
+              required
+              type="datetime-local"
+            />
+            <Field
+              label="Kilometraje final"
+              min="0"
+              name="odometerKm"
+              required
+              step="0.01"
+              type="number"
+            />
+            <CheckboxField
+              label="Confirmo que la carga fue entregada"
+              name="cargoDelivered"
+              required
+            />
+            <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+          </SimpleForm>
+        </>
+      ) : null}
+      <OfficeTripAncillaryForms gateway={gateway} trip={trip} />
+    </section>
+  );
+}
+
+const loadStateOptions: readonly AdminOption[] = [
+  { id: "loaded", label: "Con carga", status: "La unidad transporta carga" },
+  { id: "empty", label: "Vacío", status: "La unidad no transporta carga" },
+];
+
+function OfficeLoadStateForm({
+  gateway,
+  trip,
+  onChanged,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly trip: AdminTripRow;
+  readonly onChanged: (
+    next: Pick<AdminTripRow, "operationalStatus" | "status"> &
+      Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
+    versionDelta?: number,
+  ) => void;
+}): React.JSX.Element {
+  return (
+    <SimpleForm
+      compact
+      submitLabel="Guardar condición"
+      title="Cambio de carga o vacío"
+      onSubmit={(form) => {
+        const id = crypto.randomUUID();
+        return gateway.recordStaffTripLoadState({
+          id,
+          tripId: trip.id,
+          loadState: textValue(form, "loadState") === "empty" ? "empty" : "loaded",
+          effectiveAt: dateTimeValue(form, "effectiveAt"),
+          odometerKm: numberValue(form, "odometerKm"),
+          version: trip.version,
+          reason: textValue(form, "reason"),
+          idempotencyKey: id,
+        });
+      }}
+      onSaved={() =>
+        onChanged({ operationalStatus: trip.operationalStatus, status: trip.status }, 0)
+      }
+    >
+      <Field
+        defaultValue={localDateTimeInputValue()}
+        label="Fecha y hora real"
+        name="effectiveAt"
+        required
+        type="datetime-local"
+      />
+      <Field label="Kilometraje" min="0" name="odometerKm" required step="0.01" type="number" />
+      <SelectField label="Condición" name="loadState" options={loadStateOptions} required />
+      <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+    </SimpleForm>
+  );
+}
+
+function OfficeTripAncillaryForms({
+  gateway,
+  trip,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly trip: AdminTripRow;
+}): React.JSX.Element {
+  return (
+    <>
+      <div className="admin-context-actions__links" aria-label="Registros relacionados">
+        <Link to={`${routePaths.fuelEntries}?viaje=${encodeURIComponent(trip.id)}`}>
+          Registrar combustible
+        </Link>
+        <Link to={`${routePaths.expenses}?viaje=${encodeURIComponent(trip.id)}`}>
+          Registrar gasto
+        </Link>
+      </div>
+      <SimpleForm
+        compact
+        submitLabel="Registrar kilometraje"
+        title="Kilometraje"
+        onSubmit={(form) => {
+          const id = crypto.randomUUID();
+          return gateway.recordStaffTripOdometer({
+            id,
+            tripId: trip.id,
+            readingKm: numberValue(form, "readingKm"),
+            readingAt: dateTimeValue(form, "readingAt"),
+            readingType: textValue(form, "readingType"),
+            version: trip.version,
+            reason: textValue(form, "reason"),
+            idempotencyKey: id,
+          });
+        }}
+      >
+        <Field
+          defaultValue={localDateTimeInputValue()}
+          label="Fecha y hora real"
+          name="readingAt"
+          required
+          type="datetime-local"
+        />
+        <Field
+          label="Lectura de odómetro"
+          min="0"
+          name="readingKm"
+          required
+          step="0.01"
+          type="number"
+        />
+        <Field defaultValue="staff_manual" label="Tipo de lectura" name="readingType" required />
+        <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+      </SimpleForm>
+      <SimpleForm
+        compact
+        submitLabel="Registrar incidencia"
+        title="Incidencia"
+        onSubmit={(form) => {
+          const id = crypto.randomUUID();
+          const severity = textValue(form, "severity");
+          return gateway.recordStaffTripIncident({
+            id,
+            tripId: trip.id,
+            occurredAt: dateTimeValue(form, "occurredAt"),
+            location: optionalText(form, "location"),
+            incidentType: textValue(form, "incidentType"),
+            severity:
+              severity === "critical" || severity === "high" || severity === "medium"
+                ? severity
+                : "low",
+            description: textValue(form, "description"),
+            actionTaken: optionalText(form, "actionTaken"),
+            estimatedCost: nullableNumber(form, "estimatedCost"),
+            version: trip.version,
+            reason: textValue(form, "reason"),
+            idempotencyKey: id,
+          });
+        }}
+      >
+        <Field
+          defaultValue={localDateTimeInputValue()}
+          label="Fecha y hora real"
+          name="occurredAt"
+          required
+          type="datetime-local"
+        />
+        <Field label="Tipo de incidencia" name="incidentType" required />
+        <SelectField label="Gravedad" name="severity" options={incidentSeverityOptions} required />
+        <TextareaField label="Descripción" name="description" required />
+        <Field label="Ubicación (opcional)" name="location" />
+        <TextareaField label="Acción tomada (opcional)" name="actionTaken" />
+        <Field
+          label="Costo estimado (opcional)"
+          min="0"
+          name="estimatedCost"
+          step="0.01"
+          type="number"
+        />
+        <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+      </SimpleForm>
+    </>
+  );
+}
+
+const incidentSeverityOptions: readonly AdminOption[] = [
+  { id: "low", label: "Baja", status: "Sin impacto inmediato" },
+  { id: "medium", label: "Media", status: "Requiere seguimiento" },
+  { id: "high", label: "Alta", status: "Afecta la operación" },
+  { id: "critical", label: "Crítica", status: "Atención inmediata" },
+];
 
 const operationalCycleStatusOptions: readonly {
   readonly value: OperationalCycleStatus;
@@ -8712,7 +9146,7 @@ export function tripPrimaryAction(trip: AdminTripRow): {
   if (trip.operationalStatus === "draft") return { label: "Aprobar", kind: "manage" };
   if (trip.operationalStatus === "approved") return { label: "Programar", kind: "manage" };
   if (["scheduled", "loading", "in_transit", "unloading"].includes(trip.operationalStatus))
-    return { label: "Ver seguimiento", kind: "summary" };
+    return { label: "Gestionar", kind: "manage" };
   return { label: "Ver resumen", kind: "summary" };
 }
 

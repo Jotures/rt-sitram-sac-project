@@ -76,6 +76,7 @@ streams:
         )
       - SELECT id, company_id, code, cycle_id, client_id, vehicle_id, driver_id, route_id,
           origin, destination, scheduled_at, started_at, operational_finished_at,
+          capture_mode, capture_mode_changed_at,
           operational_status, administrative_status, financial_status,
           freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency,
           notes, version, updated_at
@@ -163,6 +164,7 @@ streams:
         )
       - SELECT id, company_id, code, cycle_id, client_id, vehicle_id, driver_id, route_id,
           origin, destination, scheduled_at, started_at, operational_finished_at,
+          capture_mode, capture_mode_changed_at,
           operational_status, administrative_status, financial_status,
           freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency,
           notes, version, updated_at

@@ -1,9 +1,15 @@
 begin;
 set local search_path = extensions, public, auth;
-select plan(83);
+select plan(89);
 
 select has_function('public', 'approve_trip', array['uuid'], 'approve_trip contract exists');
 select has_function('public', 'schedule_trip', array['uuid','uuid','uuid'], 'schedule_trip contract exists');
+select has_function('public', 'schedule_trip', array['uuid','uuid','uuid','trip_capture_mode'], 'capture-mode schedule_trip contract exists');
+select has_function('public', 'change_trip_capture_mode', array['uuid','trip_capture_mode','integer','text'], 'capture-mode handoff contract exists');
+select has_function('public', 'record_staff_trip_transition', array['uuid','uuid','text','numeric','boolean','timestamp with time zone','trip_load_state','integer','text'], 'staff transition contract exists');
+select has_function('public', 'record_staff_trip_load_state', array['uuid','uuid','trip_load_state','timestamp with time zone','numeric','integer','text','uuid'], 'staff load-state contract exists');
+select has_function('public', 'record_staff_trip_odometer_entry', array['uuid','uuid','numeric','timestamp with time zone','text','integer','text','uuid'], 'staff odometer contract exists');
+select has_function('public', 'record_staff_trip_incident', array['uuid','uuid','timestamp with time zone','text','text','incident_severity','text','text','numeric','uuid','integer','text','uuid'], 'staff incident contract exists');
 select has_function('public', 'start_trip', array['uuid','numeric'], 'start_trip contract exists');
 select has_function('public', 'complete_trip', array['uuid','numeric','boolean'], 'complete_trip contract exists');
 select has_function('public', 'complete_trip', array['uuid','numeric','integer','uuid','boolean'], 'authoritative complete_trip requires delivery confirmation');
@@ -125,6 +131,12 @@ select ok(
       select unnest(array[
         'public.approve_trip(uuid)'::regprocedure,
         'public.schedule_trip(uuid,uuid,uuid)'::regprocedure,
+        'public.schedule_trip(uuid,uuid,uuid,public.trip_capture_mode)'::regprocedure,
+        'public.change_trip_capture_mode(uuid,public.trip_capture_mode,integer,text)'::regprocedure,
+        'public.record_staff_trip_transition(uuid,uuid,text,numeric,boolean,timestamptz,public.trip_load_state,integer,text)'::regprocedure,
+        'public.record_staff_trip_load_state(uuid,uuid,public.trip_load_state,timestamptz,numeric,integer,text,uuid)'::regprocedure,
+        'public.record_staff_trip_odometer_entry(uuid,uuid,numeric,timestamptz,text,integer,text,uuid)'::regprocedure,
+        'public.record_staff_trip_incident(uuid,uuid,timestamptz,text,text,public.incident_severity,text,text,numeric,uuid,integer,text,uuid)'::regprocedure,
         'public.transition_trip_operational(uuid,public.trip_operational_status,integer,text)'::regprocedure,
         'public.start_trip(uuid,numeric)'::regprocedure,
         'public.complete_trip(uuid,numeric,boolean)'::regprocedure,
@@ -147,16 +159,23 @@ select ok(
         'public.update_work_order_progress(uuid,uuid,public.work_order_status,timestamptz,timestamptz,text,text,text,boolean)'::regprocedure,
         'public.record_work_order_part(uuid,uuid,uuid,uuid,numeric,numeric,timestamptz,numeric,text,uuid)'::regprocedure,
         'public.attach_work_order_evidence(uuid,uuid,uuid,text,uuid)'::regprocedure,
+        'public.set_vehicle_operational_status(uuid,public.vehicle_status,text)'::regprocedure,
         'public.create_trip_invoice(uuid,uuid,text,text,timestamptz,timestamptz,numeric)'::regprocedure,
         'public.create_trip_invoice(uuid,uuid,text,text,date,date,numeric,numeric)'::regprocedure,
         'public.register_invoice_payment(uuid,timestamptz,numeric,text,text)'::regprocedure,
+        'public.get_report_filter_options()'::regprocedure,
+        'public.get_report_snapshot(text,date,date,uuid,uuid,uuid,uuid)'::regprocedure,
+        'public.get_report_dossier_snapshot(text[],date,date,uuid,uuid,uuid,uuid)'::regprocedure,
+        'public.record_report_export(text,text,jsonb)'::regprocedure,
         'public.resolve_alert(uuid,text)'::regprocedure,
         'public.link_driver_profile(uuid,uuid)'::regprocedure,
+        'public.manage_company_profile_access(uuid,text,public.app_role,text)'::regprocedure,
         'public.record_odometer_entry(uuid,uuid,numeric,timestamptz,text,text,uuid)'::regprocedure,
         'public.record_expense(uuid,uuid,uuid,uuid,timestamptz,numeric,character,text,text,uuid,text,text,uuid)'::regprocedure,
         'public.record_fuel_entry(uuid,uuid,uuid,timestamptz,text,numeric,numeric,text,numeric,numeric,character,text,text,text,uuid,text,uuid)'::regprocedure,
         'public.record_staff_trip_expense(uuid,uuid,uuid,uuid,timestamptz,numeric,character,text,text,uuid,text,text,uuid)'::regprocedure,
         'public.record_staff_trip_fuel_entry(uuid,uuid,uuid,timestamptz,text,numeric,numeric,text,numeric,numeric,character,text,text,text,uuid,text,uuid)'::regprocedure,
+        'public.record_trip_load_state_event(uuid,uuid,public.trip_load_state,timestamptz,numeric,text,uuid,uuid,text)'::regprocedure,
         'public.create_operational_cycle(uuid,text,uuid,uuid,public.return_status,text,uuid)'::regprocedure,
         'public.update_operational_cycle(uuid,integer,public.operational_cycle_status,public.return_status,text)'::regprocedure,
         'public.add_trip_to_operational_cycle(uuid,uuid,public.operational_cycle_leg_kind,integer)'::regprocedure,
