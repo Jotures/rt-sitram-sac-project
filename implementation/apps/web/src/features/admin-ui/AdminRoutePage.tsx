@@ -6031,7 +6031,9 @@ function ProfileAccessDialog({
           description="Envía nuevamente el enlace de creación de clave al correo registrado del usuario."
           onSubmit={async () => gateway.resendCompanyInvitation(profile.id)}
           successMessage="Invitación reenviada."
-        />
+        >
+          {null}
+        </SimpleForm>
       ) : null}
     </AdminActionDialog>
   );
