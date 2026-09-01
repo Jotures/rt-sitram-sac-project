@@ -1,0 +1,135 @@
+.gps-context-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.gps-context-card__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.gps-context-card__heading h2,
+.gps-context-card__summary,
+.gps-context-card__note {
+  margin: 0;
+}
+
+.gps-context-card__heading > svg {
+  color: var(--color-copper-700);
+}
+
+.gps-context-card__summary {
+  max-width: 56rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.gps-context-card__terms {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-border);
+}
+
+.gps-context-card__terms > div {
+  min-width: 0;
+  padding: 0.85rem;
+  background: var(--color-mineral-50);
+}
+
+.gps-context-card__terms dt {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.gps-context-card__terms dd {
+  margin: 0.28rem 0 0;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.gps-context-card__terms small {
+  display: block;
+  margin-block-start: 0.28rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-variant-numeric: normal;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.gps-context-card__note {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.gps-context-card__note svg {
+  flex: 0 0 auto;
+  margin-block-start: 0.05rem;
+  color: var(--color-copper-700);
+}
+
+.gps-fleet-exceptions {
+  gap: 0.7rem;
+  padding-block: 0.9rem;
+  border-inline-start: 3px solid var(--color-warning);
+}
+
+.gps-fleet-exceptions__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.gps-fleet-exceptions__heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.gps-fleet-exceptions .admin-priority-list__item {
+  min-height: 3.25rem;
+}
+
+.gps-fleet-exceptions__note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 64rem) {
+  .gps-context-card__terms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 40rem) {
+  .gps-context-card__heading {
+    align-items: start;
+  }
+
+  .gps-context-card__terms {
+    grid-template-columns: 1fr;
+  }
+
+  .gps-fleet-exceptions__heading {
+    align-items: start;
+    flex-direction: column;
+  }
+}

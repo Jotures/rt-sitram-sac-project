@@ -1,0 +1,834 @@
+.gps-odometer-management {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 76rem;
+}
+
+.gps-odometer-management__header {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 10rem;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  overflow: hidden;
+  padding: clamp(1.15rem, 2.6vw, 1.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-route) 28%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 93% 8%, rgb(46 107 98 / 19%), transparent 17rem),
+    linear-gradient(138deg, var(--color-surface) 0%, #edf4f0 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.gps-odometer-management__header::after {
+  position: absolute;
+  right: -5rem;
+  bottom: -7rem;
+  z-index: -1;
+  width: 13rem;
+  height: 13rem;
+  border: 1px solid rgb(46 107 98 / 18%);
+  border-radius: 50%;
+  box-shadow: -2rem -1.5rem 0 -1px rgb(46 107 98 / 10%);
+  content: "";
+}
+
+.gps-odometer-management__header h1,
+.gps-odometer-management__header p,
+.gps-odometer-management__section-heading h2,
+.gps-odometer-management__section-heading p,
+.gps-odometer-management__section-heading small,
+.gps-odometer-management__candidate h3,
+.gps-odometer-management__candidate p,
+.gps-odometer-management__empty p,
+.gps-odometer-management__notice h1,
+.gps-odometer-management__notice p {
+  margin: 0;
+}
+
+.gps-odometer-management__header h1 {
+  color: var(--color-text);
+  font-size: clamp(1.85rem, 4vw, 2.65rem);
+  letter-spacing: -0.04em;
+}
+
+.gps-odometer-management__header > div:first-child > p:last-child {
+  max-width: 48rem;
+  margin-block-start: 0.45rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.gps-odometer-management__eyebrow,
+.gps-odometer-management__section-heading > div > p,
+.gps-odometer-management__dialog header > div > p:first-child {
+  color: var(--color-copper-700);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.gps-odometer-management__eyebrow {
+  margin: 0 0 0.32rem;
+}
+
+.gps-odometer-management__header-status {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 0.42rem;
+}
+
+.gps-odometer-management__header-status small {
+  max-width: 14rem;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.gps-odometer-management__boundary,
+.gps-odometer-management__feedback {
+  display: flex;
+  align-items: start;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: var(--color-mineral-50);
+  font-size: 0.87rem;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__boundary svg {
+  flex: 0 0 auto;
+  margin-block-start: 0.04rem;
+  color: var(--color-copper-700);
+}
+
+.gps-odometer-management__boundary strong {
+  color: var(--color-text);
+}
+
+.gps-odometer-management__feedback--success {
+  border-color: color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.gps-odometer-management__feedback--error {
+  border-color: color-mix(in srgb, var(--color-critical) 35%, var(--color-border));
+  color: var(--color-critical);
+  background: var(--color-critical-soft);
+}
+
+.gps-odometer-management__workspace {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.gps-odometer-management__section {
+  padding: 1.15rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.gps-odometer-management__section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block-end: 1rem;
+}
+
+.gps-odometer-management__section-heading h2 {
+  margin-block: 0.18rem 0.28rem;
+  color: var(--color-text);
+  font-size: 1.08rem;
+}
+
+.gps-odometer-management__section-heading small {
+  display: block;
+  max-width: 46rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__section-heading > span {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 2rem;
+  min-height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-copper-700);
+  background: var(--color-copper-50);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.gps-odometer-management__candidate-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.8rem;
+}
+
+.gps-odometer-management__candidate {
+  display: grid;
+  align-content: start;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-block-start: 3px solid var(--color-copper-600);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.gps-odometer-management__candidate-heading,
+.gps-odometer-management__authority-list li,
+.gps-odometer-management__review-list li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.gps-odometer-management__candidate-heading .technical-value,
+.gps-odometer-management__authority-list .technical-value,
+.gps-odometer-management__review-list .technical-value {
+  margin: 0;
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  font-size: 0.96rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 740;
+  letter-spacing: -0.02em;
+}
+
+.gps-odometer-management__candidate h3 {
+  margin-block-start: 0.18rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.gps-odometer-management__candidate > p,
+.gps-odometer-management__candidate-note {
+  color: var(--color-text-muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__candidate-note {
+  margin: 0;
+  padding: 0.62rem 0.7rem;
+  border-inline-start: 3px solid var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.gps-odometer-management__metrics,
+.gps-odometer-management__dialog-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.gps-odometer-management__candidate .gps-odometer-management__metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gps-odometer-management__metric {
+  min-width: 0;
+  padding: 0.72rem;
+  background: var(--color-mineral-50);
+}
+
+.gps-odometer-management__metric + .gps-odometer-management__metric {
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.gps-odometer-management__metric dt {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.gps-odometer-management__metric dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 0.83rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.gps-odometer-management__metric--emphasized {
+  background: var(--color-copper-50);
+}
+
+.gps-odometer-management__metric--emphasized dd {
+  color: var(--color-copper-800);
+  font-size: 0.98rem;
+}
+
+.gps-odometer-management__authority-list,
+.gps-odometer-management__review-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.gps-odometer-management__authority-list li,
+.gps-odometer-management__review-list li {
+  padding: 0.85rem;
+  background: var(--color-surface-raised);
+}
+
+.gps-odometer-management__authority-list li + li,
+.gps-odometer-management__review-list li + li {
+  border-block-start: 1px solid var(--color-border);
+}
+
+.gps-odometer-management__authority-list li > div:first-child,
+.gps-odometer-management__review-list li > div:first-child {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.gps-odometer-management__authority-list small,
+.gps-odometer-management__review-list small {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.gps-odometer-management__authority-action {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.gps-odometer-management__policy-state,
+.gps-odometer-management__empty {
+  display: flex;
+  align-items: start;
+  gap: 0.7rem;
+  padding: 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-mineral-50);
+}
+
+.gps-odometer-management__policy-state > svg,
+.gps-odometer-management__empty > svg {
+  flex: 0 0 auto;
+  margin-block-start: 0.07rem;
+  color: var(--color-copper-700);
+}
+
+.gps-odometer-management__policy-state--missing {
+  border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+  background: var(--color-warning-soft);
+}
+
+.gps-odometer-management__policy-state--missing > svg {
+  color: var(--color-warning);
+}
+
+.gps-odometer-management__policy-state strong,
+.gps-odometer-management__empty strong {
+  display: block;
+  color: var(--color-text);
+  font-size: 0.89rem;
+}
+
+.gps-odometer-management__policy-state p,
+.gps-odometer-management__empty p {
+  margin: 0.22rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__policy-state > p {
+  grid-column: 1 / -1;
+  margin: 0.75rem 0 0;
+}
+
+.gps-odometer-management__policy-disclosure {
+  margin-block-start: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.gps-odometer-management__policy-disclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.gps-odometer-management__policy-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.gps-odometer-management__policy-disclosure summary strong,
+.gps-odometer-management__policy-disclosure summary small {
+  display: block;
+}
+
+.gps-odometer-management__policy-disclosure summary strong {
+  color: var(--color-text);
+  font-size: 0.88rem;
+}
+
+.gps-odometer-management__policy-disclosure summary small {
+  margin-block-start: 0.12rem;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.gps-odometer-management__policy-disclosure summary svg {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  transition: transform var(--motion-small) var(--ease-productive);
+}
+
+.gps-odometer-management__policy-disclosure[open] summary {
+  border-block-end: 1px solid var(--color-border);
+  background: var(--color-mineral-50);
+}
+
+.gps-odometer-management__policy-disclosure[open] summary svg {
+  transform: rotate(90deg);
+}
+
+.gps-odometer-management__policy-form {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.9rem;
+}
+
+.gps-odometer-management__policy-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gps-odometer-management__dialog-form fieldset {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gps-odometer-management__policy-form label,
+.gps-odometer-management__dialog-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.gps-odometer-management__policy-form label > span,
+.gps-odometer-management__dialog-form label > span {
+  line-height: 1.3;
+}
+
+.gps-odometer-management__field-help,
+.gps-odometer-management__dialog-form small {
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+.gps-odometer-management__form-intro,
+.gps-odometer-management__decision-impact {
+  margin: 0;
+  padding: 0.75rem 0.8rem;
+  border-inline-start: 3px solid var(--color-info);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-info-soft);
+  font-size: 0.81rem;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__decision-impact {
+  border-color: var(--color-route);
+  background: var(--color-route-soft);
+}
+
+.gps-odometer-management__decision-impact strong {
+  display: block;
+  color: var(--color-text);
+  font-size: 0.82rem;
+}
+
+.gps-odometer-management__decision-impact p {
+  margin: 0.2rem 0 0;
+}
+
+.gps-odometer-management__policy-form input,
+.gps-odometer-management__policy-form textarea,
+.gps-odometer-management__dialog-form select,
+.gps-odometer-management__dialog-form textarea {
+  width: 100%;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font: inherit;
+  font-weight: 500;
+}
+
+.gps-odometer-management__policy-form input,
+.gps-odometer-management__dialog-form select {
+  min-height: 2.65rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.gps-odometer-management__policy-form textarea,
+.gps-odometer-management__dialog-form textarea {
+  min-height: 5.7rem;
+  padding: 0.6rem 0.65rem;
+  resize: vertical;
+}
+
+.gps-odometer-management__policy-form input::placeholder,
+.gps-odometer-management__policy-form textarea::placeholder,
+.gps-odometer-management__dialog-form textarea::placeholder {
+  color: var(--color-text-subtle);
+  opacity: 1;
+}
+
+.gps-odometer-management__policy-form input:focus,
+.gps-odometer-management__policy-form textarea:focus,
+.gps-odometer-management__dialog-form select:focus,
+.gps-odometer-management__dialog-form textarea:focus,
+.gps-odometer-management__policy-disclosure summary:focus-visible,
+.gps-odometer-management__dialog header button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gps-odometer-management__policy-reason,
+.gps-odometer-management__policy-form fieldset > p,
+.gps-odometer-management__policy-form fieldset > div,
+.gps-odometer-management__policy-confirmation {
+  grid-column: 1 / -1;
+}
+
+.gps-odometer-management__policy-confirmation {
+  display: flex !important;
+  align-items: start;
+  gap: 0.62rem;
+  padding: 0.72rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted) !important;
+  background: var(--color-mineral-50);
+  font-size: 0.8rem !important;
+  font-weight: 650 !important;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__policy-confirmation input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-block-start: 0.08rem;
+  accent-color: var(--color-copper-700);
+}
+
+.gps-odometer-management__policy-form fieldset > p[role="alert"],
+.gps-odometer-management__dialog-form fieldset > p[role="alert"] {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-critical);
+  background: var(--color-critical-soft);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.gps-odometer-management__notice {
+  display: grid;
+  min-height: 14rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  background: var(--color-mineral-50);
+  text-align: center;
+}
+
+.gps-odometer-management__notice svg {
+  color: var(--color-copper-700);
+}
+
+.gps-odometer-management__notice h1 {
+  color: var(--color-text);
+  font-size: 1.05rem;
+}
+
+.gps-odometer-management__notice p {
+  max-width: 34rem;
+  line-height: 1.5;
+}
+
+.gps-odometer-management__dialog {
+  width: min(42rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  background: transparent;
+}
+
+.gps-odometer-management__dialog::backdrop {
+  background: color-mix(in srgb, var(--color-ink-950) 58%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.gps-odometer-management__dialog > article {
+  overflow: hidden auto;
+  max-height: calc(100dvh - 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-dialog);
+}
+
+.gps-odometer-management__dialog header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  color: var(--color-mineral-50);
+  background: var(--color-ink-950);
+}
+
+.gps-odometer-management__dialog header h2,
+.gps-odometer-management__dialog header p {
+  margin: 0;
+}
+
+.gps-odometer-management__dialog header h2 {
+  margin-block-start: 0.22rem;
+  color: var(--color-surface-raised);
+  font-size: 1.1rem;
+}
+
+.gps-odometer-management__dialog header > div > p:last-child {
+  margin-block-start: 0.3rem;
+  color: color-mix(in srgb, var(--color-mineral-50) 75%, transparent);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__dialog header > div > p:first-child {
+  color: var(--color-copper-500);
+}
+
+.gps-odometer-management__dialog header button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-surface-raised) 28%, transparent);
+  border-radius: 50%;
+  color: var(--color-surface-raised);
+  background: transparent;
+  cursor: pointer;
+}
+
+.gps-odometer-management__dialog header button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.gps-odometer-management__dialog-form {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.gps-odometer-management__dialog-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gps-odometer-management__dialog-form small {
+  color: var(--color-text-muted);
+}
+
+.gps-odometer-management__exception-check {
+  display: flex !important;
+  align-items: start;
+  gap: 0.65rem;
+  padding: 0.78rem;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 36%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-soft);
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+  line-height: 1.45;
+}
+
+.gps-odometer-management__exception-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-block-start: 0.07rem;
+  accent-color: var(--color-copper-700);
+}
+
+.gps-odometer-management__dialog-form footer {
+  display: flex;
+  justify-content: end;
+  gap: 0.6rem;
+  padding-block-start: 0.1rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gps-odometer-management__policy-disclosure[open] .gps-odometer-management__policy-form,
+  .gps-odometer-management__dialog[open] > article {
+    animation: gps-odometer-enter var(--motion-panel) var(--ease-enter) both;
+  }
+}
+
+@keyframes gps-odometer-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.97);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .gps-odometer-management__dialog header button:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-surface-raised) 10%, transparent);
+  }
+}
+
+@media (max-width: 48rem) {
+  .gps-odometer-management__header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .gps-odometer-management__header-status {
+    justify-items: start;
+  }
+
+  .gps-odometer-management__header-status small {
+    max-width: none;
+    text-align: left;
+  }
+
+  .gps-odometer-management__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .gps-odometer-management__metric + .gps-odometer-management__metric {
+    border-block-start: 1px solid var(--color-border);
+    border-inline-start: 0;
+  }
+
+  .gps-odometer-management__authority-list li,
+  .gps-odometer-management__review-list li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gps-odometer-management__authority-action {
+    justify-content: space-between;
+  }
+
+  .gps-odometer-management__review-list li > .button {
+    align-self: stretch;
+  }
+
+  .gps-odometer-management__policy-form {
+    padding: 0.85rem;
+  }
+
+  .gps-odometer-management__policy-form fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .gps-odometer-management__dialog {
+    width: calc(100% - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .gps-odometer-management__dialog > article {
+    max-height: calc(100dvh - 1rem);
+  }
+}
+
+@media (max-width: 31rem) {
+  .gps-odometer-management__section,
+  .gps-odometer-management__dialog-form {
+    padding: 0.85rem;
+  }
+
+  .gps-odometer-management__section-heading,
+  .gps-odometer-management__candidate-heading {
+    gap: 0.6rem;
+  }
+
+  .gps-odometer-management__dialog header {
+    padding: 0.95rem;
+  }
+
+  .gps-odometer-management__dialog-form footer {
+    flex-direction: column-reverse;
+  }
+
+  .gps-odometer-management__dialog-form footer .button {
+    justify-content: center;
+  }
+}

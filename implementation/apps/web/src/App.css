@@ -5,34 +5,39 @@
   place-items: center;
 }
 
+.technical-status--embedded {
+  min-height: auto;
+  padding: 0;
+}
+
 .technical-status__card {
   width: min(100%, 40rem);
   padding: clamp(1.5rem, 5vw, 3rem);
-  border: 1px solid #334155;
-  border-radius: 1rem;
-  background: #0f172a;
-  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 25%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-float);
 }
 
 .technical-status__eyebrow {
   margin: 0 0 0.5rem;
-  color: #38bdf8;
+  color: var(--color-copper-700);
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-h1 {
+.technical-status__card h1 {
   margin: 0;
-  color: #f8fafc;
+  color: var(--color-text);
   font-size: clamp(2rem, 6vw, 3rem);
 }
 
 .technical-status__card > p:not(.technical-status__eyebrow) {
   max-width: 56ch;
   margin: 1rem 0 0;
-  color: #cbd5e1;
+  color: var(--color-text-muted);
   line-height: 1.6;
 }
 
@@ -47,17 +52,18 @@ h1 {
   gap: 0.25rem;
   padding: 0.875rem 1rem;
   border-radius: 0.5rem;
-  background: #172033;
+  border: 1px solid var(--color-border);
+  background: var(--color-mineral-50);
 }
 
 .technical-status__details dt {
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: 0.875rem;
 }
 
 .technical-status__details dd {
   margin: 0;
-  color: #f8fafc;
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -66,7 +72,77 @@ h1 {
   gap: 0.75rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #334155;
+  border-top: 1px solid var(--color-border);
+}
+
+.technical-status__powersync {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.technical-status__powersync h2,
+.technical-status__powersync p {
+  margin: 0;
+}
+
+.technical-status__details--compact {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  margin-top: 0;
+}
+
+.technical-status__powersync input,
+.technical-status__powersync button {
+  min-height: 2.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem 0.75rem;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.technical-status__powersync button {
+  width: fit-content;
+  border-color: var(--color-copper-700);
+  cursor: pointer;
+  color: white;
+  background: var(--color-copper-700);
+  font-weight: 700;
+}
+
+.technical-status__powersync button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.technical-status__records {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.technical-status__records li {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-mineral-50);
+}
+
+.technical-status__records small {
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+}
+
+.technical-status__records li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .technical-status__auth h2,
@@ -76,13 +152,13 @@ h1 {
 }
 
 .technical-status__auth h2 {
-  color: #f8fafc;
+  color: var(--color-text);
   font-size: 1.125rem;
 }
 
 .technical-status__auth p,
 .technical-status__notice {
-  color: #cbd5e1;
+  color: var(--color-text-muted);
   line-height: 1.5;
 }
 
@@ -94,25 +170,33 @@ h1 {
 .technical-status__form label {
   display: grid;
   gap: 0.375rem;
-  color: #cbd5e1;
+  color: var(--color-text);
   font-weight: 600;
+}
+
+.technical-status__form label small {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .technical-status__form input,
 .technical-status__auth button {
   min-height: 2.75rem;
-  border: 1px solid #475569;
-  border-radius: 0.5rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   padding: 0.625rem 0.75rem;
-  color: #f8fafc;
-  background: #020617;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
 }
 
 .technical-status__auth button {
   width: fit-content;
-  border-color: #38bdf8;
+  border-color: var(--color-copper-700);
   cursor: pointer;
-  background: #0369a1;
+  color: white;
+  background: var(--color-copper-700);
   font-weight: 700;
 }
 

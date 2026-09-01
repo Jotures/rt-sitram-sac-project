@@ -14,7 +14,13 @@ Este paquete contiene los **9 artefactos `variant="document"`** generados en la 
 | 8 | `08_plan_maestro_implementacion.md` | Plan Maestro de Implementación — Sistema Digital R&T SITRAM SAC | `91347` |
 | 9 | `09_sintesis_comprension_negocio.md` | Síntesis de Comprensión del Negocio — R&T SITRAM SAC | `36428` |
 
-## Verificación de integridad
+## Verificación de integridad del paquete original
+
+Las huellas siguientes describen la exportación original. Desde el 2026-08-28,
+`09_sintesis_comprension_negocio.md` es un documento vivo y fue actualizado por
+instrucción del propietario con evidencia operativa real. Por ello, su huella
+original se conserva como referencia histórica y no debe compararse con el
+archivo vigente.
 
 | Archivo | Bytes UTF-8 | SHA-256 |
 |---|---:|---|
@@ -27,3 +33,9 @@ Este paquete contiene los **9 artefactos `variant="document"`** generados en la 
 | `07_arquitectura_tecnica_sistema.md` | 69463 | `65995f913073ead9498d420857278cefa13164370d12623b66a4267ac0e69eac` |
 | `08_plan_maestro_implementacion.md` | 41968 | `aaa505b13b12760c34dc4d9fee6da5825fcb439884d656607e8c667d3a716bb7` |
 | `09_sintesis_comprension_negocio.md` | 26795 | `e030ea176bd361dfbf00b1d2394068b53d2671f7b651aee745202319145c5465` |
+
+## Revisión vigente de la síntesis de negocio
+
+| Archivo | Fecha de revisión | Bytes | SHA-256 | Fuente de actualización |
+|---|---|---:|---|---|
+| `09_sintesis_comprension_negocio.md` | 2026-08-28 | 32366 | `5880afe5d53c0dd1841159d8e14594780f900d10a610402cc7a3ccdb052e4611` | [Síntesis exclusiva de evidencia operativa real](analisis_operativo/corpus_whatsapp_ingesta_20260828/14_sintesis_comprension_negocio_evidencia_real.md) |

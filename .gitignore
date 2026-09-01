@@ -12,6 +12,7 @@ coverage/
 .env.*
 !.env.example
 !.env.*.example
+!implementation/apps/web/.env.production
 *.pem
 *.key
 *.p12
@@ -46,3 +47,8 @@ implementation/supabase/.env.*
 playwright-report/
 test-results/
 .eslintcache
+tmp/
+__pycache__/
+
+# Private operational evidence (locally ingested, never versioned)
+evidence/

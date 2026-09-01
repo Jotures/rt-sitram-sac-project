@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "id": "synthetic-baseline-v1",
+    "engine": "SYNTHETIC_BASELINE",
+    "engineVersion": "0.0.0",
+    "normalizationProfile": {
+      "id": "rt-fuel-v1",
+      "version": "1.0.0"
+    },
+    "executionEnvironment": {
+      "runtimeId": "synthetic-harness",
+      "runtimeVersion": "1.0.0",
+      "hardwareId": "synthetic-harness"
+    }
+  },
+  "runs": [
+    {
+      "caseId": "SYN-FUEL-001-ORIGINAL",
+      "outcome": "SUCCEEDED",
+      "durationMs": 120,
+      "fields": {
+        "supplier_name": {
+          "raw": "GRIFO DEMO NORTE",
+          "normalized": "GRIFO DEMO NORTE",
+          "confidence": 0.99
+        },
+        "tax_id": { "raw": "00000000001", "normalized": "00000000001", "confidence": 0.99 },
+        "issued_at": { "raw": "2026-08-10", "normalized": "2026-08-10", "confidence": 0.99 },
+        "document_type": { "raw": "FACTURA", "normalized": "FACTURA", "confidence": 0.99 },
+        "document_number": {
+          "raw": "F001-00000001",
+          "normalized": "F00100000001",
+          "confidence": 0.99
+        },
+        "fuel_type": { "raw": "DIESEL B5 S50", "normalized": "DIESEL B5 S50", "confidence": 0.99 },
+        "quantity": { "raw": "25.50", "normalized": "25.50", "confidence": 0.99 },
+        "volume_unit": { "raw": "GALLON", "normalized": "GALLON", "confidence": 0.99 },
+        "unit_price": { "raw": "16.20", "normalized": "16.20", "confidence": 0.99 },
+        "total_amount": { "raw": "413.10", "normalized": "413.10", "confidence": 0.99 },
+        "tax_amount": { "raw": "63.02", "normalized": "63.02", "confidence": 0.99 },
+        "currency": { "raw": "PEN", "normalized": "PEN", "confidence": 0.99 }
+      }
+    },
+    {
+      "caseId": "SYN-FUEL-001-CORRECTED",
+      "outcome": "SUCCEEDED",
+      "durationMs": 100,
+      "fields": {
+        "supplier_name": {
+          "raw": "GRIFO DEMO NORTE",
+          "normalized": "GRIFO DEMO NORTE",
+          "confidence": 0.99
+        },
+        "tax_id": { "raw": "00000000001", "normalized": "00000000001", "confidence": 0.99 },
+        "issued_at": { "raw": "2026-08-10", "normalized": "2026-08-10", "confidence": 0.99 },
+        "document_type": { "raw": "FACTURA", "normalized": "FACTURA", "confidence": 0.99 },
+        "document_number": {
+          "raw": "F001-00000001",
+          "normalized": "F00100000001",
+          "confidence": 0.99
+        },
+        "fuel_type": { "raw": "DIESEL B5 S50", "normalized": "DIESEL B5 S50", "confidence": 0.99 },
+        "quantity": { "raw": "25.50", "normalized": "25.50", "confidence": 0.99 },
+        "volume_unit": { "raw": "GALLON", "normalized": "GALLON", "confidence": 0.99 },
+        "unit_price": { "raw": "16.20", "normalized": "16.20", "confidence": 0.99 },
+        "total_amount": { "raw": "413.10", "normalized": "413.10", "confidence": 0.99 },
+        "tax_amount": { "raw": "63.02", "normalized": "63.02", "confidence": 0.99 },
+        "currency": { "raw": "PEN", "normalized": "PEN", "confidence": 0.99 }
+      }
+    },
+    {
+      "caseId": "SYN-FUEL-002-ORIGINAL",
+      "outcome": "SUCCEEDED",
+      "durationMs": 340,
+      "fields": {
+        "supplier_name": {
+          "raw": "ESTACION PRUEBA SUR",
+          "normalized": "ESTACION PRUEBA SUR",
+          "confidence": 0.75
+        },
+        "tax_id": { "raw": "00000000009", "normalized": "00000000009", "confidence": 0.3 },
+        "issued_at": { "raw": "12/08/2026", "normalized": "2026-08-12", "confidence": 0.75 },
+        "document_type": { "raw": "BOLETA", "normalized": "BOLETA", "confidence": 0.75 },
+        "document_number": {
+          "raw": "B001 00000002",
+          "normalized": "B00100000002",
+          "confidence": 0.75
+        },
+        "fuel_type": { "raw": "GASOHOL 95", "normalized": "GASOHOL 95", "confidence": 0.75 },
+        "quantity": { "raw": "18.00", "normalized": "18.00", "confidence": 0.75 },
+        "volume_unit": { "raw": "LITER", "normalized": "LITER", "confidence": 0.75 },
+        "unit_price": { "raw": "5.80", "normalized": "5.80", "confidence": 0.75 },
+        "total_amount": { "raw": "104.40", "normalized": "104.40", "confidence": 0.75 },
+        "tax_amount": { "raw": "16.00", "normalized": "16.00", "confidence": 0.75 },
+        "currency": { "raw": "PEN", "normalized": "PEN", "confidence": 0.75 }
+      }
+    },
+    {
+      "caseId": "SYN-FUEL-003-ORIGINAL",
+      "outcome": "FAILED",
+      "durationMs": 510,
+      "failureCode": "SYNTHETIC_UNREADABLE",
+      "fields": {}
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@rt-sitram/ocr-benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "benchmark": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "tsx": "4.23.12",
+    "typescript": "6.0.2",
+    "vitest": "4.1.10"
+  }
+}

@@ -24,7 +24,7 @@ describe("Supabase configuration", () => {
     });
   });
 
-  it("explains invalid URL configuration without exposing values", () => {
+  it("explains invalid URL configuration without exposing internal variable names or values", () => {
     const configuration = readSupabaseConfiguration({
       VITE_SUPABASE_URL: "not-a-url",
       VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
@@ -34,6 +34,11 @@ describe("Supabase configuration", () => {
       status: "NOT_CONFIGURED",
       problems: ["INVALID_URL"],
     });
-    expect(describeSupabaseConfigurationProblems(["INVALID_URL"])).toContain("VITE_SUPABASE_URL");
+    const description = describeSupabaseConfigurationProblems(["INVALID_URL"]);
+
+    expect(description).toContain("conexión del sistema");
+    expect(description).toContain("Comunícate con Gerencia");
+    expect(description).not.toContain("VITE_");
+    expect(description).not.toContain("not-a-url");
   });
 });

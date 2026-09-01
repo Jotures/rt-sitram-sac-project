@@ -1,0 +1,7 @@
+.vercel
+.env*
+!.env.example
+!.env.pilot.example
+
+# Corpus, verdad de campo y resultados con comprobantes reales: sólo locales.
+.local/ocr-benchmark/

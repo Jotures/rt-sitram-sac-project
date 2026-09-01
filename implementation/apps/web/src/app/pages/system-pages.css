@@ -1,0 +1,57 @@
+.system-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 88% 10%, rgb(192 115 78 / 12%), transparent 24rem),
+    var(--color-mineral-100);
+}
+
+.system-page--embedded {
+  min-height: calc(100vh - 10rem);
+  padding: 0;
+}
+
+.system-page__panel {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 30rem);
+  padding: clamp(1.5rem, 5vw, 2.75rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 92% 8%, rgb(192 115 78 / 12%), transparent 15rem),
+    var(--color-surface-raised);
+  box-shadow: var(--shadow-float);
+  text-align: center;
+}
+
+.system-page__code {
+  color: var(--color-copper-700);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.system-page h1 {
+  margin: 0.75rem 0 0;
+  color: var(--color-text);
+  font-size: 1.8rem;
+  letter-spacing: -0.03em;
+}
+
+.system-page p {
+  margin: 0.8rem 0 0;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.system-page__hint {
+  font-size: 0.82rem;
+}
+
+.system-page .button {
+  margin-top: 1.5rem;
+}

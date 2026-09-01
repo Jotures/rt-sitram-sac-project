@@ -1,14 +1,9 @@
-const CACHE_NAME = "rt-sitram-pwa-shell-v1";
+// The production build replaces this expression with a content fingerprint.
+const CACHE_NAME = self.__RT_SITRAM_CACHE_NAME__ ?? "rt-sitram-pwa-shell-development";
 const CACHE_PREFIX = "rt-sitram-pwa-shell-";
-const APP_SHELL_PATHS = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/icons/app-icon-192.png",
-  "/icons/app-icon-512.png",
-  "/assets/app.js",
-  "/assets/index.css",
-];
+// The production build replaces this expression with every emitted JS worker,
+// chunk and WASM dependency needed to reopen SQLite without a network.
+const APP_SHELL_PATHS = self.__RT_SITRAM_PRECACHE__ ?? [];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -37,19 +32,27 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
 
-  if (
-    event.request.method !== "GET" ||
-    requestUrl.origin !== self.location.origin ||
-    !isAppShellRequest(event.request, requestUrl)
-  ) {
+  if (event.request.method !== "GET" || requestUrl.origin !== self.location.origin) {
     return;
   }
 
-  event.respondWith(networkFirstAppShell(event.request));
+  if (event.request.mode === "navigate") {
+    event.respondWith(networkFirstAppShell(event.request));
+    return;
+  }
+
+  if (isStaticAssetRequest(event.request, requestUrl)) {
+    event.respondWith(cacheFirstStaticAsset(event.request));
+  }
 });
 
-function isAppShellRequest(request, requestUrl) {
-  return request.mode === "navigate" || APP_SHELL_PATHS.includes(requestUrl.pathname);
+function isStaticAssetRequest(request, requestUrl) {
+  return (
+    APP_SHELL_PATHS.includes(requestUrl.pathname) ||
+    requestUrl.pathname.startsWith("/assets/") ||
+    requestUrl.pathname.startsWith("/icons/") ||
+    ["script", "style", "worker", "font", "image"].includes(request.destination)
+  );
 }
 
 async function networkFirstAppShell(request) {
@@ -76,4 +79,21 @@ async function networkFirstAppShell(request) {
 
     return Response.error();
   }
+}
+
+async function cacheFirstStaticAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const response = await fetch(request);
+
+  if (response.ok) {
+    await cache.put(request, response.clone());
+  }
+
+  return response;
 }

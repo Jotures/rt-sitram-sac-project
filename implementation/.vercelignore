@@ -1,0 +1,2 @@
+# Production runtime configuration is managed in Vercel, not uploaded from a local workstation.
+apps/web/.env.production

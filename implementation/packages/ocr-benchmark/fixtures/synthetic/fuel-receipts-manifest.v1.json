@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "dataset": {
+    "id": "synthetic-fuel-receipts-v1",
+    "classification": "SYNTHETIC_ONLY",
+    "containsRealDocuments": false
+  },
+  "normalizationProfile": {
+    "id": "rt-fuel-v1",
+    "version": "1.0.0"
+  },
+  "fields": [
+    { "id": "supplier_name", "label": "Proveedor" },
+    { "id": "tax_id", "label": "RUC" },
+    { "id": "issued_at", "label": "Fecha de emisión" },
+    { "id": "document_type", "label": "Tipo de comprobante" },
+    { "id": "document_number", "label": "Serie y número" },
+    { "id": "fuel_type", "label": "Combustible" },
+    { "id": "quantity", "label": "Cantidad" },
+    { "id": "volume_unit", "label": "Unidad" },
+    { "id": "unit_price", "label": "Precio unitario" },
+    { "id": "total_amount", "label": "Total" },
+    { "id": "tax_amount", "label": "IGV" },
+    { "id": "currency", "label": "Moneda" }
+  ],
+  "cases": [
+    {
+      "id": "SYN-FUEL-001-ORIGINAL",
+      "comparisonGroupId": "SYN-DOC-001",
+      "imageVariant": "ORIGINAL",
+      "source": "SYNTHETIC",
+      "conditions": ["clean", "frontal", "thermal"],
+      "groundTruth": {
+        "supplier_name": { "raw": "GRIFO DEMO NORTE", "normalized": "GRIFO DEMO NORTE" },
+        "tax_id": { "raw": "00000000001", "normalized": "00000000001" },
+        "issued_at": { "raw": "2026-08-10", "normalized": "2026-08-10" },
+        "document_type": { "raw": "FACTURA", "normalized": "FACTURA" },
+        "document_number": { "raw": "F001-00000001", "normalized": "F00100000001" },
+        "fuel_type": { "raw": "DIESEL B5 S50", "normalized": "DIESEL B5 S50" },
+        "quantity": { "raw": "25.50", "normalized": "25.50" },
+        "volume_unit": { "raw": "GALLON", "normalized": "GALLON" },
+        "unit_price": { "raw": "16.20", "normalized": "16.20" },
+        "total_amount": { "raw": "413.10", "normalized": "413.10" },
+        "tax_amount": { "raw": "63.02", "normalized": "63.02" },
+        "currency": { "raw": "PEN", "normalized": "PEN" }
+      }
+    },
+    {
+      "id": "SYN-FUEL-001-CORRECTED",
+      "comparisonGroupId": "SYN-DOC-001",
+      "imageVariant": "CORRECTED",
+      "source": "SYNTHETIC",
+      "conditions": ["clean", "corrected", "frontal", "thermal"],
+      "groundTruth": {
+        "supplier_name": { "raw": "GRIFO DEMO NORTE", "normalized": "GRIFO DEMO NORTE" },
+        "tax_id": { "raw": "00000000001", "normalized": "00000000001" },
+        "issued_at": { "raw": "2026-08-10", "normalized": "2026-08-10" },
+        "document_type": { "raw": "FACTURA", "normalized": "FACTURA" },
+        "document_number": { "raw": "F001-00000001", "normalized": "F00100000001" },
+        "fuel_type": { "raw": "DIESEL B5 S50", "normalized": "DIESEL B5 S50" },
+        "quantity": { "raw": "25.50", "normalized": "25.50" },
+        "volume_unit": { "raw": "GALLON", "normalized": "GALLON" },
+        "unit_price": { "raw": "16.20", "normalized": "16.20" },
+        "total_amount": { "raw": "413.10", "normalized": "413.10" },
+        "tax_amount": { "raw": "63.02", "normalized": "63.02" },
+        "currency": { "raw": "PEN", "normalized": "PEN" }
+      }
+    },
+    {
+      "id": "SYN-FUEL-002-ORIGINAL",
+      "comparisonGroupId": "SYN-DOC-002",
+      "imageVariant": "ORIGINAL",
+      "source": "SYNTHETIC",
+      "conditions": ["shadow", "skew", "thermal"],
+      "groundTruth": {
+        "supplier_name": { "raw": "ESTACION PRUEBA SUR", "normalized": "ESTACION PRUEBA SUR" },
+        "tax_id": { "raw": "00000000002", "normalized": "00000000002" },
+        "issued_at": { "raw": "2026-08-12", "normalized": "2026-08-12" },
+        "document_type": { "raw": "BOLETA", "normalized": "BOLETA" },
+        "document_number": { "raw": "B001-00000002", "normalized": "B00100000002" },
+        "fuel_type": { "raw": "GASOHOL 95", "normalized": "GASOHOL 95" },
+        "quantity": { "raw": "18.00", "normalized": "18.00" },
+        "volume_unit": { "raw": "LITER", "normalized": "LITER" },
+        "unit_price": { "raw": "5.80", "normalized": "5.80" },
+        "total_amount": { "raw": "104.40", "normalized": "104.40" },
+        "currency": { "raw": "PEN", "normalized": "PEN" }
+      }
+    },
+    {
+      "id": "SYN-FUEL-003-ORIGINAL",
+      "comparisonGroupId": "SYN-DOC-003",
+      "imageVariant": "ORIGINAL",
+      "source": "SYNTHETIC",
+      "conditions": ["glare", "low_contrast", "thermal"],
+      "groundTruth": {
+        "supplier_name": { "raw": "GRIFO DEMO RUTA", "normalized": "GRIFO DEMO RUTA" },
+        "tax_id": { "raw": "00000000003", "normalized": "00000000003" },
+        "issued_at": { "raw": "2026-08-14", "normalized": "2026-08-14" },
+        "document_type": { "raw": "TICKET", "normalized": "TICKET" },
+        "document_number": { "raw": "SYN-00000003", "normalized": "SYN00000003" },
+        "fuel_type": { "raw": "DIESEL B5 S50", "normalized": "DIESEL B5 S50" },
+        "quantity": { "raw": "40.00", "normalized": "40.00" },
+        "total_amount": { "raw": "648.00", "normalized": "648.00" },
+        "currency": { "raw": "PEN", "normalized": "PEN" }
+      }
+    }
+  ]
+}

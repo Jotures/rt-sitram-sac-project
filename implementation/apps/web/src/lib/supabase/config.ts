@@ -63,13 +63,15 @@ export function readSupabaseConfiguration(environment: SupabaseEnvironment): Sup
 }
 
 const problemMessages: Record<SupabaseConfigurationProblem, string> = {
-  MISSING_URL: "Falta VITE_SUPABASE_URL.",
-  INVALID_URL: "VITE_SUPABASE_URL debe ser una URL http(s) válida.",
-  MISSING_PUBLISHABLE_KEY: "Falta VITE_SUPABASE_PUBLISHABLE_KEY.",
+  MISSING_URL: "Falta completar la conexión del sistema.",
+  INVALID_URL: "La conexión del sistema necesita una revisión.",
+  MISSING_PUBLISHABLE_KEY: "Falta completar la autorización de conexión de este dispositivo.",
 };
 
 export function describeSupabaseConfigurationProblems(
   problems: readonly SupabaseConfigurationProblem[],
 ): string {
-  return problems.map((problem) => problemMessages[problem]).join(" ");
+  const details = problems.map((problem) => problemMessages[problem]).join(" ");
+
+  return `${details} Comunícate con Gerencia o con la persona responsable de configurar la aplicación.`;
 }

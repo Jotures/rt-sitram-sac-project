@@ -5,17 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/generate-service-worker.mjs",
     "typecheck": "tsc -b",
-    "test": "vitest run",
+    "test": "vitest run && node scripts/verify-invite-company-user.mjs",
     "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "5.3.0",
+    "@journeyapps/wa-sqlite": "2.0.3",
+    "@powersync/react": "2.0.0",
+    "@powersync/web": "2.2.0",
+    "@react-pdf/renderer": "4.9.0",
+    "@rt-sitram/domain": "workspace:*",
     "@rt-sitram/shared": "workspace:*",
     "@supabase/supabase-js": "2.110.8",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-is": "19.2.8",
+    "react-router-dom": "7.18.2",
+    "recharts": "3.10.1"
   },
   "devDependencies": {
     "@types/node": "24.13.3",

@@ -12,7 +12,24 @@ Ante conflicto documental, no elegir silenciosamente: priorizar la decisión má
 
 ## Carga selectiva de contexto
 
-Al iniciar una tarea: leer este archivo, [docs/sessions/current.md](docs/sessions/current.md) y [docs/decisions/index.md](docs/decisions/index.md); identificar y leer solo los documentos relevantes; inspeccionar los archivos de implementación afectados; y planificar antes de editar. Usar índices y referencias, no cargar el corpus completo.
+Usar [docs/mapa_repositorio.md](docs/mapa_repositorio.md) para localizar por responsabilidad el código, las pruebas y la documentación relevantes. Inspeccionar solo los archivos afectados y sus consumidores directos; usar índices y referencias, no cargar el repositorio ni el corpus completo. La orientación permanente es completar el producto, pero no asumir una vertical específica ni reanudar un plan pausado salvo que la sesión actual o el propietario lo indiquen.
+
+Para tareas de comprensión, contraste, pruebas o evolución del flujo operativo, consultar el índice de la evidencia histórica de WhatsApp: [docs/analisis_operativo/corpus_whatsapp_ingesta_20260828/00_indice.md](docs/analisis_operativo/corpus_whatsapp_ingesta_20260828/00_indice.md). Este corpus documenta evidencia observada y escenarios de prueba; no sustituye las decisiones aceptadas ni convierte hechos históricos en reglas de negocio autoritativas sin validación del propietario.
+
+## Orientación a producto y despliegue
+
+El objetivo de trabajo es cerrar progresivamente las brechas hasta contar con una aplicación completa, usable y preparada para desplegar. Priorizar cortes verticales verificables —dominio, backend/RLS, migración, UI, offline, pruebas y documentación— que acerquen una capacidad a uso real, antes que análisis o refactorizaciones que no reduzcan una brecha de producto.
+
+El entorno local y el piloto son medios de verificación, no una condición que bloquee toda implementación. Si una dependencia local falta, avanzar con las verificaciones disponibles, dejar la validación pendiente explícita y preparar el cambio para un despliegue controlado. Esta orientación no autoriza omitir pruebas relevantes, debilitar seguridad, aplicar migraciones remotas ni desplegar cambios sin autorización expresa.
+
+## Ejecución eficiente de agentes
+
+- Mantener este `AGENTS.md` por debajo de 200 líneas y reservado para reglas duraderas compartidas por agentes. Los procedimientos especializados o extensos pertenecen a una skill o documento autoritativo enlazado desde aquí, sin duplicar su contenido.
+- Cargar contexto selectivamente y mantener estas instrucciones concisas; usar índices y archivos relevantes, no corpus ni herramientas innecesarios.
+- Para cambios transversales, separar descubrimiento, plan, implementación y verificación. Cada conclusión material debe apoyarse en evidencia del repositorio, resultados de herramientas o pruebas, no en suposiciones.
+- Usar especialización o paralelización solo cuando las subtareas sean independientes, acotadas y aporten velocidad o una segunda revisión; mantener un responsable que integre y verifique el resultado.
+- Preferir el camino más simple que satisfaga los criterios de aceptación. Establecer condiciones de parada, evitar bucles de exploración sin evidencia nueva y registrar los límites de validación que dependan de otro entorno.
+- Antes de integrar o desplegar, revisar los cambios, validar contratos de seguridad/datos y ejecutar comprobaciones proporcionales al riesgo; un cambio validado dentro del alcance puede considerarse terminado.
 
 ## Límite de implementación
 

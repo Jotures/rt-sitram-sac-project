@@ -1,0 +1,959 @@
+.trip-evaluator {
+  display: grid;
+  gap: 1rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.trip-evaluator__header > *,
+.trip-evaluator__policy > *,
+.trip-evaluator__section-heading > *,
+.trip-evaluator__result-heading > * {
+  min-width: 0;
+}
+
+.trip-evaluator__header {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 10rem;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  overflow: hidden;
+  padding: clamp(1.15rem, 2.6vw, 1.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-copper-600) 28%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 93% 8%, rgb(192 115 78 / 22%), transparent 17rem),
+    linear-gradient(138deg, var(--color-surface) 0%, #f7efe8 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.trip-evaluator__header::after {
+  position: absolute;
+  right: -5rem;
+  bottom: -7rem;
+  z-index: -1;
+  width: 13rem;
+  height: 13rem;
+  border: 1px solid rgb(192 115 78 / 18%);
+  border-radius: 50%;
+  box-shadow: -2rem -1.5rem 0 -1px rgb(192 115 78 / 10%);
+  content: "";
+}
+
+.trip-evaluator__header h1,
+.trip-evaluator__header p,
+.trip-evaluator__policy h2,
+.trip-evaluator__policy p,
+.trip-evaluator__section-heading h2,
+.trip-evaluator__section-heading p,
+.trip-evaluator__result h2,
+.trip-evaluator__result p,
+.trip-evaluator__cost-editor h3,
+.trip-evaluator__cost-editor p,
+.trip-evaluator__notice h2,
+.trip-evaluator__notice p,
+.trip-evaluator__history p {
+  margin: 0;
+}
+
+.trip-evaluator__header h1 {
+  color: var(--color-text);
+  font-size: clamp(1.8rem, 4vw, 2.55rem);
+  letter-spacing: -0.035em;
+}
+
+.trip-evaluator__header > div:first-child > p:last-child {
+  max-width: 52rem;
+  margin-block-start: 0.35rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.trip-evaluator__eyebrow,
+.trip-evaluator__section-heading > div > p {
+  color: var(--color-copper-700);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.trip-evaluator__eyebrow {
+  margin-block-end: 0.3rem !important;
+}
+
+.trip-evaluator__header-status {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  max-width: 14rem;
+}
+
+.trip-evaluator__header-status small {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: end;
+}
+
+.trip-evaluator__feedback {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-inline-start: 3px solid currentColor;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.trip-evaluator__feedback--success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.trip-evaluator__feedback--error {
+  color: var(--color-critical);
+  background: var(--color-critical-soft);
+}
+
+.trip-evaluator__notice {
+  display: grid;
+  min-height: 13rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.55rem;
+  padding: 2rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  background: var(--color-mineral-50);
+  text-align: center;
+}
+
+.trip-evaluator__notice h2 {
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.trip-evaluator__notice p {
+  max-width: 38rem;
+  line-height: 1.5;
+}
+
+.trip-evaluator__notice > svg {
+  color: var(--color-copper-600);
+}
+
+.trip-evaluator__policy,
+.trip-evaluator__form,
+.trip-evaluator__result,
+.trip-evaluator__history,
+.trip-evaluator__policy-disclosure {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.trip-evaluator__policy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+}
+
+.trip-evaluator__policy--missing {
+  grid-template-columns: auto minmax(0, 1fr);
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  background: var(--color-warning-soft);
+}
+
+.trip-evaluator__policy--missing > svg {
+  color: var(--color-warning);
+}
+
+.trip-evaluator__policy-mark {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-copper-700);
+  background: var(--color-copper-50);
+}
+
+.trip-evaluator__policy p {
+  color: var(--color-copper-700);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.trip-evaluator__policy h2 {
+  margin-block: 0.14rem;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.trip-evaluator__policy small {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.trip-evaluator__form {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.1rem;
+}
+
+.trip-evaluator__form--policy {
+  margin-block-end: 0.1rem;
+}
+
+.trip-evaluator__section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.trip-evaluator__section-heading h2 {
+  margin-block-start: 0.12rem;
+  color: var(--color-text);
+  font-size: 1.12rem;
+}
+
+.trip-evaluator__section-heading > small {
+  max-width: 19rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: end;
+}
+
+.trip-evaluator__stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trip-evaluator__step {
+  min-width: 0;
+}
+
+.trip-evaluator__step button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  width: 100%;
+  min-height: 4.4rem;
+  align-items: start;
+  gap: 0.55rem;
+  padding: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: var(--color-mineral-50);
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+  transition:
+    color var(--motion-fade) var(--ease-productive),
+    border-color var(--motion-fade) var(--ease-productive),
+    background-color var(--motion-fade) var(--ease-productive);
+}
+
+.trip-evaluator__step button:focus-visible {
+  border-color: var(--color-focus);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.trip-evaluator__step--current button {
+  border-color: var(--color-copper-700);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.trip-evaluator__step-number {
+  display: grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-copper-700);
+  background: var(--color-copper-50);
+  font-size: 0.73rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.trip-evaluator__step--current .trip-evaluator__step-number {
+  color: white;
+  background: var(--color-copper-700);
+}
+
+.trip-evaluator__step strong,
+.trip-evaluator__step small {
+  display: block;
+}
+
+.trip-evaluator__step strong {
+  color: var(--color-text);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.trip-evaluator__step small {
+  margin-block-start: 0.08rem;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.trip-evaluator__fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.trip-evaluator__fields--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.trip-evaluator__fields--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trip-evaluator__fields--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trip-evaluator__field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.trip-evaluator__field > span {
+  line-height: 1.35;
+}
+
+.trip-evaluator__field input,
+.trip-evaluator__field select {
+  min-width: 0;
+  min-height: 2.65rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font: inherit;
+  font-weight: 500;
+}
+
+.trip-evaluator__field input:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-subtle);
+  background: var(--color-mineral-100);
+}
+
+.trip-evaluator__field input:focus-visible,
+.trip-evaluator__field select:focus-visible,
+.trip-evaluator__line-remove:focus-visible,
+.trip-evaluator__add-line:focus-visible,
+.trip-evaluator__policy-disclosure summary:focus-visible {
+  border-color: var(--color-focus);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.trip-evaluator__form-note {
+  margin: 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 3px solid var(--color-copper-600);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.trip-evaluator__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.trip-evaluator__actions small {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.trip-evaluator__actions--steps {
+  padding-block-start: 0.1rem;
+}
+
+.trip-evaluator__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(19rem, 0.8fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.trip-evaluator__fieldset {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.9rem 0 0;
+  border: 0;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.trip-evaluator__fieldset:first-of-type {
+  padding-block-start: 0;
+  border-block-start: 0;
+}
+
+.trip-evaluator__fieldset legend {
+  padding: 0 0.3rem 0 0;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.trip-evaluator__step-question {
+  max-width: 65ch;
+  margin: -0.45rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.trip-evaluator__cost-editor {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-mineral-50);
+}
+
+.trip-evaluator__cost-editor h3 {
+  color: var(--color-text);
+  font-size: 0.86rem;
+}
+
+.trip-evaluator__cost-editor p {
+  margin-block-start: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.trip-evaluator__cost-lines {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.trip-evaluator__cost-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(7rem, 0.75fr) 2.4rem;
+  align-items: end;
+  gap: 0.55rem;
+}
+
+.trip-evaluator__line-remove,
+.trip-evaluator__add-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-copper-700);
+  background: var(--color-surface-raised);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.trip-evaluator__line-remove {
+  width: 2.4rem;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.trip-evaluator__add-line {
+  justify-self: start;
+  padding-inline: 0.65rem;
+}
+
+.trip-evaluator__result {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.05rem;
+}
+
+.trip-evaluator__result--pending {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  min-height: 10rem;
+  border-style: dashed;
+  color: var(--color-copper-700);
+  background: var(--color-mineral-50);
+}
+
+.trip-evaluator__result--pending h2 {
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.trip-evaluator__result--pending p {
+  margin-block-start: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.trip-evaluator__result-heading,
+.trip-evaluator__scenario-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.trip-evaluator__result-heading > div > p {
+  color: var(--color-copper-700);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.trip-evaluator__result-heading h2 {
+  margin-block-start: 0.12rem;
+  color: var(--color-text);
+  font-size: 1.08rem;
+}
+
+.trip-evaluator__scenario-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.trip-evaluator__review {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.trip-evaluator__review > .section-intro {
+  align-items: start;
+}
+
+.trip-evaluator__review > dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+}
+
+.trip-evaluator__scenario {
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-mineral-50);
+}
+
+.trip-evaluator__scenario h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.trip-evaluator__scenario dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0.75rem 0 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+}
+
+.trip-evaluator__metric {
+  min-width: 0;
+  padding: 0.55rem 0.6rem;
+  background: var(--color-surface);
+}
+
+.trip-evaluator__metric dt {
+  color: var(--color-text-muted);
+  font-size: 0.67rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.trip-evaluator__metric dd {
+  margin: 0.18rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.trip-evaluator__metric--emphasized {
+  background: var(--color-copper-50);
+}
+
+.trip-evaluator__metric--emphasized dd {
+  color: var(--color-copper-800);
+  font-size: 0.86rem;
+}
+
+.trip-evaluator__coverage {
+  display: flex;
+  align-items: start;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.7rem;
+  border-inline-start: 3px solid var(--color-warning);
+  color: var(--color-text-muted);
+  background: var(--color-warning-soft);
+  font-size: 0.77rem;
+  line-height: 1.45;
+}
+
+.trip-evaluator__assessment {
+  display: flex;
+  align-items: start;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.7rem;
+  border-inline-start: 3px solid var(--color-warning);
+  color: var(--color-text);
+  background: var(--color-warning-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.trip-evaluator__assessment svg {
+  flex: 0 0 auto;
+  margin-block-start: 0.08rem;
+  color: var(--color-warning);
+}
+
+.trip-evaluator__scenario-metrics {
+  margin-block-start: 0.65rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.trip-evaluator__scenario-metrics summary {
+  padding: 0.6rem 0;
+  color: var(--color-copper-700);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.trip-evaluator__scenario-metrics summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.trip-evaluator__scenario-metrics > dl {
+  margin-block: 0 0.1rem;
+}
+
+.trip-evaluator__coverage svg {
+  flex: 0 0 auto;
+  margin-block-start: 0.1rem;
+  color: var(--color-warning);
+}
+
+.trip-evaluator__policy-disclosure {
+  overflow: clip;
+}
+
+.trip-evaluator__policy-disclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.trip-evaluator__policy-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.trip-evaluator__policy-disclosure summary span,
+.trip-evaluator__policy-disclosure summary small {
+  display: block;
+}
+
+.trip-evaluator__policy-disclosure summary strong {
+  color: var(--color-text);
+  font-size: 0.88rem;
+}
+
+.trip-evaluator__policy-disclosure summary small {
+  margin-block-start: 0.12rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.trip-evaluator__policy-disclosure summary > svg {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  transition: transform var(--motion-small) var(--ease-productive);
+}
+
+.trip-evaluator__policy-disclosure[open] summary > svg {
+  transform: rotate(90deg);
+}
+
+.trip-evaluator__policy-disclosure > .trip-evaluator__form {
+  border: 0;
+  border-block-start: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-mineral-50);
+  box-shadow: none;
+}
+
+.trip-evaluator__history {
+  padding: 1.1rem;
+}
+
+.trip-evaluator__history > p {
+  margin-block-start: 0.9rem;
+  padding: 0.85rem;
+  border-inline-start: 3px solid var(--color-route);
+  color: var(--color-text-muted);
+  background: var(--color-route-soft);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.trip-evaluator__history-table {
+  max-width: 100%;
+  margin: 0.9rem -1.1rem -1.1rem;
+  overflow-x: auto;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.trip-evaluator__history table {
+  width: 100%;
+  min-width: 48rem;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.trip-evaluator__history th,
+.trip-evaluator__history td {
+  padding: 0.75rem 1.1rem;
+  text-align: start;
+}
+
+.trip-evaluator__history-actions {
+  min-width: 12rem;
+}
+
+.trip-evaluator__history-actions > small {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.trip-evaluator__history-actions .button {
+  min-height: 2.3rem;
+  padding-block: 0.45rem;
+  font-size: 0.76rem;
+}
+
+.trip-evaluator__history-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.trip-evaluator__exception-form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.trip-evaluator__exception-reason {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.trip-evaluator__exception-reason small {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.trip-evaluator__exception-form input {
+  min-height: 2.3rem;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font: inherit;
+  font-size: 0.77rem;
+}
+
+.trip-evaluator__exception-form input:focus-visible {
+  border-color: var(--color-focus);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.trip-evaluator__history th {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.trip-evaluator__history td {
+  border-block-start: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .trip-evaluator__step button:hover,
+  .trip-evaluator__line-remove:hover,
+  .trip-evaluator__add-line:hover {
+    border-color: var(--color-copper-600);
+    background: var(--color-copper-50);
+  }
+
+  .trip-evaluator__policy-disclosure summary:hover,
+  .trip-evaluator__history tbody tr:hover {
+    background: var(--color-mineral-50);
+  }
+}
+
+@media (max-width: 72rem) {
+  .trip-evaluator__fields--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trip-evaluator__workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-evaluator__result {
+    position: static;
+  }
+
+  .trip-evaluator__stepper {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 42rem) {
+  .trip-evaluator__header,
+  .trip-evaluator__section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .trip-evaluator__header,
+  .trip-evaluator__policy,
+  .trip-evaluator__form,
+  .trip-evaluator__result,
+  .trip-evaluator__history,
+  .trip-evaluator__policy-disclosure {
+    max-width: 100%;
+  }
+
+  .trip-evaluator__header-status {
+    justify-items: start;
+    max-width: none;
+  }
+
+  .trip-evaluator__header-status small,
+  .trip-evaluator__section-heading > small {
+    text-align: start;
+  }
+
+  .trip-evaluator__fields--four,
+  .trip-evaluator__fields--three,
+  .trip-evaluator__fields--two {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-evaluator__policy {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .trip-evaluator__policy > .status-chip {
+    grid-column: 2;
+  }
+
+  .trip-evaluator__cost-line {
+    grid-template-columns: minmax(0, 1fr) 2.4rem;
+  }
+
+  .trip-evaluator__cost-line .trip-evaluator__field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .trip-evaluator__scenario dl {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-evaluator__review > dl {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-evaluator__policy-disclosure summary {
+    align-items: start;
+  }
+
+  .trip-evaluator__policy-disclosure summary small {
+    display: none;
+  }
+}

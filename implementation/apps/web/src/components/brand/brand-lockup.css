@@ -1,0 +1,126 @@
+.brand-lockup {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-ink-950);
+}
+
+.brand-lockup--inverse {
+  color: var(--color-surface);
+}
+
+.brand-mark {
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.brand-mark__field {
+  fill: var(--color-ink-950);
+  stroke: color-mix(in srgb, var(--color-surface) 24%, transparent);
+  stroke-width: 1.25;
+}
+
+.brand-mark__letter {
+  fill: var(--color-surface);
+}
+
+.brand-mark__letter--t,
+.brand-mark__route-stop {
+  fill: var(--color-copper-500);
+}
+
+.brand-mark__route {
+  fill: none;
+  stroke: var(--color-copper-500);
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.brand-lockup__copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.brand-lockup__name {
+  color: currentcolor;
+  font-size: 1rem;
+  font-weight: 720;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.brand-lockup__name span {
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.brand-lockup__copy small {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-lockup--inverse .brand-lockup__copy small {
+  color: #aebcc0;
+}
+
+.brand-lockup--compact {
+  gap: 0.65rem;
+}
+
+.brand-lockup--compact .brand-mark {
+  width: 2.55rem;
+  height: 2.55rem;
+}
+
+.brand-lockup--compact .brand-lockup__name {
+  font-size: 0.9rem;
+}
+
+.brand-route-motif {
+  display: block;
+}
+
+.brand-route-motif__stone {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: square;
+  stroke-linejoin: bevel;
+  stroke-width: 1;
+}
+
+.brand-route-motif__route {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-route-motif__route--out {
+  stroke: var(--color-copper-500);
+  stroke-width: 4;
+}
+
+.brand-route-motif__route--return {
+  stroke: currentcolor;
+  stroke-dasharray: 8 13;
+  stroke-width: 2;
+}
+
+.brand-route-motif__stop {
+  fill: var(--color-ink-950);
+  stroke: var(--color-copper-500);
+  stroke-width: 3;
+}
+
+.brand-route-motif__stop--return {
+  fill: var(--color-copper-500);
+}

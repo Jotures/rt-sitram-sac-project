@@ -1,0 +1,28 @@
+{
+  "name": "@rt-sitram/goldcar-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe": "tsx --env-file-if-exists=.env.local src/probe.ts",
+    "inspect-sensors": "tsx --env-file-if-exists=.env.local src/inspect-sensors.ts",
+    "inspect-target-availability": "tsx --env-file-if-exists=.env.local src/inspect-target-availability.ts",
+    "inspect-schema": "tsx --env-file-if-exists=.env.local src/inspect-schema.ts",
+    "inspect-request-manifest": "tsx --env-file-if-exists=.env.local src/inspect-request-manifest.ts",
+    "inspect-static-resource-manifest": "tsx --env-file-if-exists=.env.local src/inspect-static-resource-manifest.ts",
+    "sync": "tsx --env-file-if-exists=.env.local src/sync.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rt-sitram/domain": "workspace:*",
+    "@rt-sitram/integrations": "workspace:*",
+    "playwright-core": "1.62.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "tsx": "4.23.12",
+    "typescript": "6.0.2",
+    "vitest": "4.1.10"
+  }
+}

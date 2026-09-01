@@ -1,5 +1,24 @@
 # Síntesis de Comprensión del Negocio — R&T SITRAM SAC
 
+## Estado de revisión y fuentes
+
+Este documento nació como síntesis general de entrevistas, ejemplos y
+documentación de negocio. Fue actualizado el 2026-08-28 con evidencia operativa
+real procedente de una exportación de WhatsApp correspondiente al periodo
+2025-02-04–2026-08-28.
+
+La actualización aplica tres reglas:
+
+- **confirmar** cuando el corpus respalda una afirmación previa;
+- **matizar** cuando el corpus muestra una práctica más compleja o distinta;
+- **mantener como antecedente no corroborado por el corpus** aquello que depende
+  de otras fuentes.
+
+La síntesis construida exclusivamente desde esa evidencia se conserva en
+[Síntesis de Comprensión del Negocio — Evidencia Operativa Real](analisis_operativo/corpus_whatsapp_ingesta_20260828/14_sintesis_comprension_negocio_evidencia_real.md).
+Los mensajes y adjuntos no se convierten automáticamente en reglas ni datos
+autoritativos.
+
 ## Cómo entiendo que funciona actualmente el negocio
 
 R&T SITRAM SAC es, en esencia, un negocio cuya capacidad de generar dinero depende de **mantener sus camiones moviéndose con carga la mayor cantidad de tiempo posible y lograr que cada ciclo de viaje deje un margen suficiente después de cubrir todos sus costos**.
@@ -172,6 +191,12 @@ Antes de salir, normalmente se llena combustible suficiente para iniciar la oper
 
 El conductor no solamente conduce.
 
+La evidencia operativa confirma que prácticamente cada declaración de viaje
+incluye un importe “para gastos” asociado al conductor o al recorrido. Sin
+embargo, el chat no demuestra quién entrega físicamente el dinero ni si su
+naturaleza contable es siempre la misma. Debe entenderse como **fondo operativo
+pendiente de definición y rendición**, no automáticamente como adelanto salarial.
+
 Durante el viaje también administra una pequeña cantidad de dinero operativo.
 
 Recibe un adelanto destinado a cubrir gastos como:
@@ -205,7 +230,7 @@ Ese dinero debe posteriormente justificarse.
 
 # 7. Durante el viaje la información se genera de forma dispersa
 
-El conductor va produciendo información:
+Durante la operación se produce información:
 
 - facturas;
 - boletas;
@@ -214,14 +239,21 @@ El conductor va produciendo información:
 - incidencias;
 - detalles del recorrido.
 
-Parte de esa información actualmente se comunica mediante WhatsApp.
+Parte de esa información actualmente se comunica o consolida mediante
+WhatsApp.
 
-Por ejemplo, el conductor puede enviar:
+Por ejemplo, puede registrarse:
 
 - fotografía de una factura;
 - información sobre un gasto;
 - información sobre la unidad;
 - novedades del viaje.
+
+La evidencia real matiza quién realiza ese registro. Un participante concentra
+486 de los 554 mensajes y anota viajes, gastos, mantenimiento, sueldos y
+cobranza. Por tanto, el corpus no demuestra que cada conductor reporte
+directamente sus eventos; una persona de administración o confianza parece
+cumplir un papel central de consolidación.
 
 Esto funciona para comunicarse rápidamente.
 
@@ -402,6 +434,12 @@ El negocio debe evaluarse por ciclo.
 
 Al regresar a Cusco ocurre otro proceso fundamental.
 
+La evidencia de WhatsApp confirma gastos, fotografías y saldos posteriores a
+los viajes, pero no registra de forma uniforme el momento físico del retorno ni
+un cierre administrativo explícito. La secuencia siguiente continúa siendo la
+comprensión general del proceso; el corpus sólo respalda parcialmente sus
+etapas.
+
 El conductor entrega:
 
 - facturas;
@@ -462,7 +500,11 @@ y
 
 > **“la utilidad económica real del viaje”.**
 
-La empresa estima aproximadamente S/ 2,500 de utilidad neta promedio por viaje, aunque el resultado depende fuertemente de cada operación.
+La empresa estima aproximadamente S/ 2,500 de utilidad neta promedio por viaje,
+aunque el resultado depende fuertemente de cada operación. Esa estimación
+proviene de la comprensión previa y **no puede corroborarse con el corpus de
+WhatsApp**, porque los mensajes no enlazan de extremo a extremo flete, costos,
+factura, pago y asignación de costos indirectos.
 
 ---
 
@@ -507,6 +549,11 @@ Otra vez aparece el mismo fenómeno:
 Hay tres unidades y aproximadamente tres conductores regulares.
 
 Eso crea una relación prácticamente uno a uno.
+
+El corpus confirma tres identidades de conductor recurrentes durante gran parte
+del periodo, pero también muestra cambios de unidad asignada y una identidad
+adicional hacia el final. La relación uno a uno debe entenderse como un patrón
+frecuente, no como una vinculación permanente.
 
 Por tanto, tener un camión disponible no garantiza poder utilizarlo.
 
@@ -1030,6 +1077,11 @@ Existe control.
 
 Pero está distribuido.
 
+La evidencia operativa añade un matiz: dentro del chat, el registro está también
+**concentrado**. Un participante actúa como bitácora central de múltiples
+dominios. Así, el conocimiento está distribuido entre herramientas y personas,
+pero su consolidación cotidiana depende de muy pocas manos.
+
 Ejemplo:
 
 Administración sabe ciertas cosas.
@@ -1240,6 +1292,11 @@ La ida es solo una parte del negocio. La verdadera economía aparece al observar
 
 La empresa funciona actualmente con experiencia práctica acumulada, relaciones comerciales, coordinación humana, WhatsApp, Excel, GPS y documentos. Ese modelo ha permitido operar durante años, pero dificulta medir con precisión y rapidez cuánto produce cada unidad, cuánto cuesta cada viaje y dónde se está perdiendo capacidad.
 
+La evidencia de 2025–2026 confirma especialmente el papel de WhatsApp como
+bitácora administrativa: registra con regularidad la salida y sus recursos,
+pero pierde la relación formal entre viaje, gasto, saldo, mantenimiento,
+factura, cobro y pago de personal.
+
 El principal salto que veo para R&T SITRAM no consiste únicamente en digitalizar registros, sino en convertir toda la operación en un sistema observable y medible.
 
 Una empresa donde sea posible saber:
@@ -1260,3 +1317,54 @@ Y por eso considero que el núcleo que debería guiar cualquier decisión futura
 # Maximizar la utilidad sostenible generada por cada unidad por día disponible.
 
 Esa frase resume, para mí, cómo funciona económicamente y operativamente R&T SITRAM SAC hoy.
+
+---
+
+# 42. Actualización basada en evidencia operativa real — 2025–2026
+
+## Qué quedó confirmado
+
+- Tres unidades recurrentes y, durante la mayor parte del periodo, tres
+  conductores recurrentes sostienen la operación observada.
+- Lima domina ampliamente los movimientos registrados, con recorridos
+  adicionales hacia Arequipa/Corire, Ayacucho/Andahuaylas, Puerto Maldonado y
+  Challhuahuacho/Ilo.
+- Cada salida se organiza alrededor de unidad, conductor, combustible, fondo
+  para gastos y carga.
+- El combustible, los gastos de carretera, el mantenimiento y los neumáticos
+  son corrientes de costo visibles y repetitivas.
+- Existen documentos de empresa y flota, facturación, detracciones, depósitos y
+  seguimiento de cuentas por cobrar.
+- Algunos movimientos continúan, se postergan o se reanudan, por lo que viaje,
+  tramo, retorno y ciclo necesitan una regla explícita.
+
+## Qué quedó matizado o corregido
+
+- WhatsApp no aparece principalmente como conversación directa de todos los
+  conductores. Funciona como bitácora consolidada por un registrador
+  predominante.
+- La asignación conductor–unidad es recurrente, pero no permanente.
+- El “dinero para gastos” está claramente presente, aunque su naturaleza
+  financiera exacta no queda definida.
+- Los saldos de gasto pueden reaparecer dentro de cálculos de sueldo. Esto
+  conecta rendición y planilla en la práctica, pero no autoriza tratarlas como
+  un solo proceso.
+- El cierre administrativo, la utilidad por viaje, los tiempos de espera, los
+  kilómetros vacíos y la política comercial no pueden reconstruirse de manera
+  confiable sólo desde el chat.
+
+## Nueva comprensión integrada
+
+La empresa ya posee una plantilla mental estable para ejecutar sus servicios:
+sabe qué unidad sale, quién conduce, qué carga transporta, cuánto combustible y
+dinero operativo se asignan y qué evidencias aparecen después. El problema no
+es ausencia de conocimiento operativo. Es que ese conocimiento queda separado
+en mensajes sin una identidad común y sin estados de aprobación o cierre.
+
+La evidencia refuerza la comprensión estratégica original y añade una precisión
+importante:
+
+> **R&T SITRAM no necesita digitalizar WhatsApp como conversación; necesita
+> convertir la plantilla operativa que hoy vive en WhatsApp en un ciclo único y
+> trazable que conecte preparación, ejecución, gasto, rendición, mantenimiento,
+> facturación y cobranza, manteniendo planilla como una frontera explícita.**

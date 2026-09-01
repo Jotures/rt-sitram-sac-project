@@ -1,0 +1,20 @@
+{
+  "name": "@rt-sitram/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rt-sitram/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "6.0.2",
+    "vitest": "4.1.10"
+  }
+}

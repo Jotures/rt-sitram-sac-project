@@ -1,3 +1,10 @@
 packages:
   - apps/*
   - packages/*
+allowBuilds:
+  esbuild: true
+  yarn: false
+minimumReleaseAgeExclude:
+  - '@journeyapps/wa-sqlite@2.0.3'
+  - '@powersync/common@2.1.0'
+  - '@powersync/web@2.2.0'

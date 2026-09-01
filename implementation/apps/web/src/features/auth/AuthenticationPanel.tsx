@@ -45,6 +45,9 @@ export function AuthenticationPanel(): React.JSX.Element {
       <form className="technical-status__form" onSubmit={(event) => void onSubmit(event)}>
         <label>
           Correo
+          <small>
+            Ejemplo: nombre@empresa.com. Usa el correo con el que Administración creó tu acceso.
+          </small>
           <input
             autoComplete="email"
             disabled={state.status === "INITIALIZING" || isSubmitting}
@@ -57,6 +60,7 @@ export function AuthenticationPanel(): React.JSX.Element {
         </label>
         <label>
           Contraseña
+          <small>Usa la contraseña creada al activar tu cuenta. No la compartas.</small>
           <input
             autoComplete="current-password"
             disabled={state.status === "INITIALIZING" || isSubmitting}
