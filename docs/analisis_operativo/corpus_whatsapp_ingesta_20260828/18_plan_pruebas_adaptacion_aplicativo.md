@@ -211,9 +211,9 @@ error o interpretó incorrectamente un saldo o estado.
 | `P2` | El proceso se completa con pérdida de contexto, pasos manuales relevantes o confusión recuperable. |
 | `P3` | Defecto menor de lenguaje, disposición o presentación sin pérdida de control. |
 
-## Gate de adaptación
+## Gate de adaptación integral
 
-No declarar el aplicativo adaptado a la operación observada mientras exista:
+No declarar el aplicativo íntegramente adaptado a la operación observada mientras exista:
 
 - un `P0` o `P1` abierto;
 - una regla material sin dueño o definición;
@@ -239,3 +239,8 @@ delimitar las brechas restantes:
 Hasta entonces, las pruebas deben verificar que el sistema no invente ni oculte
 las decisiones aceptadas, y que no convierta una práctica histórica ambigua en
 dato productivo.
+
+DEC-046 autoriza el arranque productivo controlado del núcleo antes de cerrar
+esta certificación integral. La ejecución de este plan pasa a ser evidencia de
+estabilización de las primeras operaciones reales y no habilita a trasladar las
+brechas enumeradas a producción sin una decisión específica.

@@ -30,6 +30,12 @@ pasaron `db lint`, el verificador de ACL, PowerSync y el humo autenticado de
 las rutas principales. Formato, lint, TypeScript, 410 pruebas Vitest y build
 pasaron localmente. El UAT histórico sintético sigue pendiente.
 
+DEC-046 autoriza, no obstante, el **arranque productivo controlado del núcleo**:
+el uso real de viajes, captura, gastos, combustible, adelantos, rendición y
+cobranza básica no depende de OCR ni de GPS profundo. Esta matriz conserva su
+veredicto parcial sobre la adaptación total de los patrones históricos; no es
+un bloqueo para ese alcance inicial autorizado.
+
 Por eso, el aplicativo cubre mejor el **flujo objetivo estructurado** que la
 forma histórica de registrar por chat. Eso es deseable, siempre que R&T valide
 el cambio de responsabilidades y que el producto resuelva las excepciones
@@ -57,10 +63,12 @@ y los 16 casos del
 | Parcial | 6 | Persisten brechas de cobertura o claridad por decisión de producto. |
 | No cubierto; límite de alcance aceptado | 1 | Planilla queda fuera del producto por DEC-037. |
 | No debe trasladarse automáticamente | 3 | La práctica histórica ambigua debe conservarse como excepción o revisión humana, no convertirse en dato autoritativo. |
-| **Total** | **16** | El veredicto global permanece **parcial** hasta completar UAT y atender las brechas de producto pendientes. |
+| **Total** | **16** | El veredicto de adaptación integral permanece **parcial**; DEC-046 autoriza el núcleo productivo mientras se estabilizan los casos restantes. |
 
 Ningún caso fue clasificado como “cubierto y adecuado” porque aún falta un UAT
 representativo de los escenarios históricos sintéticos por los roles de R&T.
+Ese límite aplica a la certificación de adaptación integral, no al uso inicial
+del núcleo bajo el procedimiento de DEC-046.
 
 ## Leyenda dimensional
 
@@ -191,14 +199,14 @@ La evaluación se apoyó principalmente en:
 - streams de PowerSync y suites de dominio, integración, web y pgTAP.
 
 La validación local final pasó formato, lint, TypeScript, las cinco suites
-Vitest (410 pruebas) y build. Las siete migraciones P0/P1/P2 se aplicaron al
+Vitest (436 pruebas) y build. Las siete migraciones P0/P1/P2 se aplicaron al
 remoto autorizado; sus 12 suites pgTAP pasaron con `begin`/`rollback`, y
 también pasaron `db lint`, el verificador de ACL y la comprobación de PowerSync
 sin rezago. El UAT sigue pendiente.
 
 ## Condiciones para cambiar el veredicto
 
-La adaptación puede elevarse a “adecuada” cuando:
+La adaptación integral puede elevarse a “adecuada” cuando:
 
 1. Administración, Gerencia y Conductor ejecuten los escenarios críticos con datos
    sintéticos en el entorno aislado;
@@ -207,10 +215,10 @@ La adaptación puede elevarse a “adecuada” cuando:
 4. los escenarios estables se conviertan en regresión automatizada o UAT
    repetible.
 
-Antes de certificar el uso formal, el artefacto desplegado debe asociarse a un
-commit y una etiqueta Git reproducibles. El árbol de trabajo de esta sesión aún
-contiene cambios sin versionar, por lo que ese cierre requiere una revisión
-explícita de alcance antes de crear el commit.
+La certificación integral requiere que el artefacto desplegado esté asociado a
+un commit y una etiqueta Git reproducibles. El arranque inicial sigue el
+runbook de DEC-046 y conserva los mismos requisitos de integridad, roles,
+auditoría y recuperación offline.
 
 El procedimiento se encuentra en el
 [plan de pruebas de adaptación](18_plan_pruebas_adaptacion_aplicativo.md).
