@@ -108,6 +108,7 @@ const trips = new Table(
     driver_id: column.text,
     route_id: column.text,
     origin: column.text,
+    pickup_location: column.text,
     destination: column.text,
     scheduled_at: column.text,
     started_at: column.text,

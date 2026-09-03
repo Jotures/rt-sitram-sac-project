@@ -17,6 +17,7 @@ const snapshot: ReportSnapshot = {
       currency: "PEN",
       contracted_revenue: 1000,
       tons: 10,
+      commercial_terms_complete: true,
       direct_cost: 250,
       settlement_closed: true,
       pending_cost_records: 0,
@@ -148,5 +149,31 @@ describe("report calculations", () => {
       snapshot,
     );
     expect(result.rows[0]).toMatchObject({ value: 10, secondaryValue: 10 });
+  });
+
+  it("excludes incomplete commercial terms from totals without inventing zero values", () => {
+    const incompleteTrip = {
+      ...snapshot.trips[0],
+      trip_id: "trip-pending",
+      contracted_revenue: null,
+      tons: null,
+      commercial_terms_complete: false,
+    };
+    const result = buildReport(
+      "company-a",
+      "OVERVIEW",
+      { from: "2026-08-01", to: "2026-08-31" },
+      { ...snapshot, trips: [...snapshot.trips, incompleteTrip] },
+    );
+    expect(result.rows[1]).toMatchObject({
+      value: null,
+      secondaryValue: null,
+      state: "UNAVAILABLE",
+    });
+    expect(result.summary.find((item) => item.id === "contractedRevenue")?.label).toBe(
+      "Flete confirmado (1 de 2 viajes)",
+    );
+    expect(result.summary.find((item) => item.id === "tons")?.value).toBe(10);
+    expect(result.coverage.notes.join(" ")).toContain("1 viaje(s) quedaron fuera");
   });
 });

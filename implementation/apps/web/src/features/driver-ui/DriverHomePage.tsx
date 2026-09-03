@@ -116,7 +116,13 @@ export function DriverHomePage(): React.JSX.Element {
                 <div>
                   <dt>Ruta</dt>
                   <dd>
-                    {trips.nextTrip.origin} → {trips.nextTrip.destination}
+                    {[
+                      trips.nextTrip.origin,
+                      trips.nextTrip.pickup_location,
+                      trips.nextTrip.destination,
+                    ]
+                      .filter((location): location is string => location !== null)
+                      .join(" → ")}
                   </dd>
                 </div>
                 <div>

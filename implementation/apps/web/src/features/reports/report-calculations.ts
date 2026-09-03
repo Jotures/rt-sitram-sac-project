@@ -172,9 +172,19 @@ function series(rows: readonly ReportTableRow[]): readonly ReportSeriesPoint[] {
 }
 
 function tripState(item: Record<string, unknown>): ReportMetricState {
-  if (number(item, "direct_cost") === null || bool(item, "has_currency_mismatch"))
+  if (
+    !bool(item, "commercial_terms_complete") ||
+    number(item, "direct_cost") === null ||
+    bool(item, "has_currency_mismatch")
+  )
     return unavailable;
   return confirmed;
+}
+
+function tripRouteLabel(trip: Record<string, unknown>): string {
+  return [text(trip, "origin"), nullableText(trip, "pickup_location"), text(trip, "destination")]
+    .filter((location): location is string => location !== null)
+    .join(" → ");
 }
 
 function completedTripRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
@@ -183,7 +193,7 @@ function completedTripRows(snapshot: ReportSnapshot): readonly ReportTableRow[] 
     const state = tripState(trip);
     return row(
       text(trip, "trip_id"),
-      `Servicio ${text(trip, "origin")} → ${text(trip, "destination")}`,
+      `Servicio ${tripRouteLabel(trip)}`,
       `Unidad ${text(trip, "vehicle_plate")} · ${text(trip, "client_name")}`,
       number(trip, "contracted_revenue"),
       number(trip, "tons"),
@@ -338,14 +348,14 @@ function downtimeRows(snapshot: ReportSnapshot, filters: ReportFilters): readonl
 
 function directMarginRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
   return snapshot.trips.map((trip) => {
-    const revenue = valueOrZero(number(trip, "contracted_revenue"));
+    const revenue = number(trip, "contracted_revenue");
     const cost = number(trip, "direct_cost");
     const state = tripState(trip);
     return row(
       text(trip, "trip_id"),
-      `Servicio ${text(trip, "origin")} → ${text(trip, "destination")}`,
+      `Servicio ${tripRouteLabel(trip)}`,
       `${text(trip, "client_name")} · Unidad ${text(trip, "vehicle_plate")}`,
-      cost === null ? null : revenue - cost,
+      state === unavailable || cost === null || revenue === null ? null : revenue - cost,
       cost,
       "money",
       state,
@@ -438,8 +448,14 @@ function overviewSummary(
   filters: ReportFilters,
 ): readonly ReportSummaryMetric[] {
   const trips = snapshot.trips;
+  const commerciallyCompleteTrips = trips.filter(
+    (trip) =>
+      bool(trip, "commercial_terms_complete") &&
+      number(trip, "contracted_revenue") !== null &&
+      number(trip, "tons") !== null,
+  );
   const revenue = money(
-    trips.map((trip) => ({
+    commerciallyCompleteTrips.map((trip) => ({
       currency: text(trip, "currency", "PEN"),
       value: valueOrZero(number(trip, "contracted_revenue")),
       state: confirmed,
@@ -456,7 +472,12 @@ function overviewSummary(
   );
   const margins = money(
     trips
-      .filter((trip) => number(trip, "direct_cost") !== null)
+      .filter(
+        (trip) =>
+          bool(trip, "commercial_terms_complete") &&
+          number(trip, "contracted_revenue") !== null &&
+          number(trip, "direct_cost") !== null,
+      )
       .map((trip) => ({
         currency: text(trip, "currency", "PEN"),
         value:
@@ -535,10 +556,17 @@ function overviewSummary(
       "tons",
       "Toneladas",
       "tons",
-      trips.reduce((sum, item) => sum + valueOrZero(number(item, "tons")), 0),
+      commerciallyCompleteTrips.reduce((sum, item) => sum + valueOrZero(number(item, "tons")), 0),
       confirmed,
     ),
-    metric("contractedRevenue", "Flete contratado", "money", null, confirmed, revenue),
+    metric(
+      "contractedRevenue",
+      `Flete confirmado (${commerciallyCompleteTrips.length} de ${trips.length} viajes)`,
+      "money",
+      null,
+      confirmed,
+      revenue,
+    ),
     metric("invoiced", "Facturado", "money", null, confirmed, invoiced),
     metric("collected", "Cobrado", "money", null, confirmed, collected),
     metric("directCosts", "Costos directos", "money", null, directState, costs),
@@ -608,8 +636,18 @@ export function buildReport(
         return collectionRows(snapshot, filters);
     }
   })();
-  const notes: readonly string[] =
-    kind === "EMPTY_KILOMETRES"
+  const incompleteCommercialTrips = snapshot.trips.filter(
+    (trip) => !bool(trip, "commercial_terms_complete"),
+  ).length;
+  const commercialCoverageNote =
+    incompleteCommercialTrips === 0
+      ? []
+      : [
+          `${incompleteCommercialTrips} viaje(s) quedaron fuera de los agregados de peso, flete y margen porque su información comercial está incompleta.`,
+        ];
+  const notes: readonly string[] = [
+    ...commercialCoverageNote,
+    ...(kind === "EMPTY_KILOMETRES"
       ? ["Los tramos sin odómetro final o con eventos inconsistentes se excluyen del cálculo."]
       : kind === "DIRECT_MARGIN"
         ? [
@@ -617,7 +655,8 @@ export function buildReport(
           ]
         : kind === "DOWNTIME"
           ? ["Las detenciones se informan por tiempo y causa; no se les asigna un costo estimado."]
-          : [];
+          : []),
+  ];
   return {
     companyId,
     kind,

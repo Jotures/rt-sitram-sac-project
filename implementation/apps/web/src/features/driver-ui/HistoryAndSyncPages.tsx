@@ -151,7 +151,10 @@ export function DriverHistoryPage(): React.JSX.Element {
                 </span>
                 <div>
                   <strong>
-                    {trip.code} · {trip.origin} → {trip.destination}
+                    {trip.code} ·{" "}
+                    {[trip.origin, trip.pickup_location, trip.destination]
+                      .filter((location): location is string => location !== null)
+                      .join(" → ")}
                   </strong>
                   <small>{formatDriverDate(trip.scheduled_at)}</small>
                 </div>

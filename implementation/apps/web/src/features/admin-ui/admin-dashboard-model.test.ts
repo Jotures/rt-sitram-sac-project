@@ -25,6 +25,7 @@ function trip(status: string): AdminTripRow {
     vehiclePlate: "ABC-123",
     driverName: "Conductor A",
     origin: "Cusco",
+    pickupLocation: null,
     destination: "Arequipa",
     operationalStatus: status,
     captureMode: "driver_app",
@@ -33,6 +34,7 @@ function trip(status: string): AdminTripRow {
     freightAmount: 0,
     freightPricingMode: "total",
     freightRatePerTon: null,
+    commercialStatus: "complete",
   };
 }
 

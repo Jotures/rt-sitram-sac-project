@@ -1,6 +1,6 @@
 begin;
 set local search_path = extensions, public, auth;
-select plan(89);
+select plan(91);
 
 select has_function('public', 'approve_trip', array['uuid'], 'approve_trip contract exists');
 select has_function('public', 'schedule_trip', array['uuid','uuid','uuid'], 'schedule_trip contract exists');
@@ -44,6 +44,8 @@ select has_function('public', 'link_driver_profile', array['uuid','uuid'], 'driv
 select has_function('public', 'manage_company_profile_access', array['uuid','text','app_role','text'], 'audited profile access management contract exists');
 select has_function('public', 'create_trip_with_load', array['uuid','text','text','timestamp with time zone','numeric','text','numeric'], 'atomic trip and initial load contract exists');
 select has_function('public', 'create_trip_with_load', array['uuid','text','text','timestamp with time zone','numeric','text','numeric','freight_pricing_mode','numeric'], 'per-ton trip capture contract exists');
+select has_function('public', 'create_trip_draft', array['uuid','text','text','text','timestamp with time zone','text','numeric','freight_pricing_mode','numeric','numeric'], 'deferred commercial trip capture contract exists');
+select has_function('public', 'set_trip_commercial_terms', array['uuid','uuid','text','numeric','freight_pricing_mode','numeric','numeric','integer','text'], 'audited deferred commercial terms contract exists');
 select has_function('public', 'update_client_master', array['uuid','timestamp with time zone','text','text','text','text','text','integer','client_relationship_type','boolean','text'], 'audited client master update contract exists');
 select has_function('public', 'update_vehicle_master', array['uuid','timestamp with time zone','text','text','text','integer','numeric','vehicle_ownership_type','text','boolean','text'], 'audited vehicle master update contract exists');
 select has_function('public', 'update_driver_master', array['uuid','timestamp with time zone','text','text','text','text','text','date','text','date','date','uuid','boolean','text'], 'audited driver master update contract exists');
@@ -142,6 +144,8 @@ select ok(
         'public.complete_trip(uuid,numeric,boolean)'::regprocedure,
         'public.create_trip_with_load(uuid,text,text,timestamptz,numeric,text,numeric)'::regprocedure,
         'public.create_trip_with_load(uuid,text,text,timestamptz,numeric,text,numeric,public.freight_pricing_mode,numeric)'::regprocedure,
+        'public.create_trip_draft(uuid,text,text,text,timestamptz,text,numeric,public.freight_pricing_mode,numeric,numeric)'::regprocedure,
+        'public.set_trip_commercial_terms(uuid,uuid,text,numeric,public.freight_pricing_mode,numeric,numeric,integer,text)'::regprocedure,
         'public.update_client_master(uuid,timestamptz,text,text,text,text,text,integer,public.client_relationship_type,boolean,text)'::regprocedure,
         'public.update_vehicle_master(uuid,timestamptz,text,text,text,integer,numeric,public.vehicle_ownership_type,text,boolean,text)'::regprocedure,
         'public.update_driver_master(uuid,timestamptz,text,text,text,text,text,date,text,date,date,uuid,boolean,text)'::regprocedure,

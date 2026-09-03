@@ -26,13 +26,13 @@ const chartMeasures: Readonly<
   >
 > = {
   OVERVIEW: {
-    primary: "Flete contratado",
+    primary: "Flete confirmado",
     secondary: "Toneladas declaradas",
     primaryUnit: "money",
     secondaryUnit: "tons",
   },
   TRIPS_CARGO: {
-    primary: "Flete contratado",
+    primary: "Flete confirmado",
     secondary: "Toneladas declaradas",
     primaryUnit: "money",
     secondaryUnit: "tons",

@@ -2025,10 +2025,11 @@ function NewTripPage({
                   submitLabel="Crear borrador de viaje"
                   onSubmit={async (form) => {
                     const cargoTons = canonicalCargoTons(form);
-                    const pricing = freightPricingFromForm(form, cargoTons);
+                    const pricing = freightPricingFromForm(form);
                     const trip = await gateway.createTrip(context, {
                       clientId: textValue(form, "clientId"),
                       origin: textValue(form, "origin"),
+                      pickupLocation: optionalText(form, "pickupLocation"),
                       destination: textValue(form, "destination"),
                       scheduledAt: dateTimeValue(form, "scheduledAt"),
                       freightAmount: pricing.total,
@@ -2052,8 +2053,13 @@ function NewTripPage({
                     options={data.clients}
                     required
                   />
-                  <Field label="Origen" name="origin" required />
-                  <Field label="Destino" name="destination" required />
+                  <Field label="Salida de la unidad" name="origin" required />
+                  <Field
+                    label="Punto de carga (opcional)"
+                    name="pickupLocation"
+                    hint="Lugar donde se recogerá o pesará la carga. Puede completarse después."
+                  />
+                  <Field label="Destino de entrega" name="destination" required />
                   <Field label="Descripción de carga" name="cargoDescription" required />
                   <TripCaptureFields />
                   <Field
@@ -2092,13 +2098,30 @@ function NewTripPage({
 
 type CargoCaptureUnit = "tons" | "kilograms";
 type FreightPricingMode = "total" | "per_ton";
+type FreightPricingSelection = "pending" | FreightPricingMode;
 
-function TripCaptureFields(): React.JSX.Element {
+function TripCaptureFields({
+  initialTons = null,
+  initialPricingMode = null,
+  initialFreightAmount = null,
+  initialFreightRatePerTon = null,
+}: {
+  readonly initialTons?: number | null;
+  readonly initialPricingMode?: FreightPricingMode | null;
+  readonly initialFreightAmount?: number | null;
+  readonly initialFreightRatePerTon?: number | null;
+} = {}): React.JSX.Element {
   const [weightUnit, setWeightUnit] = useState<CargoCaptureUnit>("tons");
-  const [weight, setWeight] = useState("");
-  const [pricingMode, setPricingMode] = useState<FreightPricingMode>("total");
-  const [total, setTotal] = useState("");
-  const [rate, setRate] = useState("");
+  const [weight, setWeight] = useState(initialTons === null ? "" : String(initialTons));
+  const [pricingMode, setPricingMode] = useState<FreightPricingSelection>(
+    initialPricingMode ?? "pending",
+  );
+  const [total, setTotal] = useState(
+    initialFreightAmount === null ? "" : String(initialFreightAmount),
+  );
+  const [rate, setRate] = useState(
+    initialFreightRatePerTon === null ? "" : String(initialFreightRatePerTon),
+  );
   const tons = captureWeightToTons(weight, weightUnit);
   const calculatedTotal =
     pricingMode === "per_ton" ? roundToMoney(tons * finiteNonNegativeNumber(rate)) : null;
@@ -2106,7 +2129,7 @@ function TripCaptureFields(): React.JSX.Element {
   return (
     <div className="admin-trip-capture admin-field--wide">
       <fieldset className="admin-capture-choice">
-        <legend>Unidad de peso *</legend>
+        <legend>Peso de la carga (opcional)</legend>
         <div className="admin-choice-buttons" role="group" aria-label="Unidad de peso">
           <Button
             aria-pressed={weightUnit === "tons"}
@@ -2126,31 +2149,38 @@ function TripCaptureFields(): React.JSX.Element {
           </Button>
         </div>
         <label className="admin-field">
-          <span>Peso de carga ({weightUnit === "tons" ? "t" : "kg"}) *</span>
+          <span>Peso de carga ({weightUnit === "tons" ? "t" : "kg"})</span>
           <input
             inputMode="decimal"
             min="0.001"
             name="cargoWeight"
             onChange={(event) => setWeight(event.target.value)}
-            required
             step={weightUnit === "tons" ? "0.001" : "1"}
             type="number"
             value={weight}
           />
           <small className="admin-field__hint">
-            Ejemplo: 22.5 t. Ingresa el peso real de la carga y confirma la unidad antes de guardar.
+            Déjalo vacío si aún no pasó por balanza. Podrás completarlo durante o después del viaje.
           </small>
         </label>
         <input name="cargoUnit" type="hidden" value={weightUnit} />
         <p className="admin-form-note" aria-live="polite">
           {tons > 0
             ? `${weightLabel}: ${formatCaptureNumber(weight)}. Se guardará como ${formatCaptureNumber(tons.toString())} t.`
-            : "El peso se guardará siempre en toneladas para mantener una sola referencia operativa."}
+            : "Por definir. Esto no bloquea el avance operativo del viaje."}
         </p>
       </fieldset>
       <fieldset className="admin-capture-choice">
-        <legend>Cómo cotizas el flete *</legend>
+        <legend>Información comercial</legend>
         <div className="admin-choice-buttons" role="group" aria-label="Modalidad de flete">
+          <Button
+            aria-pressed={pricingMode === "pending"}
+            onClick={() => setPricingMode("pending")}
+            type="button"
+            variant={pricingMode === "pending" ? "primary" : "quiet"}
+          >
+            Por definir
+          </Button>
           <Button
             aria-pressed={pricingMode === "total"}
             onClick={() => setPricingMode("total")}
@@ -2169,12 +2199,16 @@ function TripCaptureFields(): React.JSX.Element {
           </Button>
         </div>
         <input name="freightPricingMode" type="hidden" value={pricingMode} />
-        {pricingMode === "total" ? (
+        {pricingMode === "pending" ? (
+          <p className="admin-form-note">
+            El viaje podrá operar y finalizar. Peso y flete deberán confirmarse antes de facturar.
+          </p>
+        ) : pricingMode === "total" ? (
           <label className="admin-field">
             <span>Flete total (S/) *</span>
             <input
               inputMode="decimal"
-              min="0"
+              min="0.01"
               name="freightAmount"
               onChange={(event) => setTotal(event.target.value)}
               required
@@ -2206,9 +2240,13 @@ function TripCaptureFields(): React.JSX.Element {
             </label>
             <output className="admin-capture-total" aria-live="polite">
               <span>Total calculado</span>
-              <strong>S/ {formatDecimal(calculatedTotal ?? 0)}</strong>
+              <strong>
+                {tons > 0 ? `S/ ${formatDecimal(calculatedTotal ?? 0)}` : "Pendiente"}
+              </strong>
               <small>
-                {formatDecimal(tons)} t × S/ {formatDecimal(finiteNonNegativeNumber(rate), 4)}
+                {tons > 0
+                  ? `${formatDecimal(tons)} t × S/ ${formatDecimal(finiteNonNegativeNumber(rate), 4)}`
+                  : "El total se calculará automáticamente cuando se registre el peso."}
               </small>
             </output>
           </>
@@ -2218,25 +2256,29 @@ function TripCaptureFields(): React.JSX.Element {
   );
 }
 
-function canonicalCargoTons(form: FormData): number {
-  const rawWeight = positiveNumberValue(form, "cargoWeight");
+function canonicalCargoTons(form: FormData): number | null {
+  const rawValue = optionalText(form, "cargoWeight");
+  if (rawValue === null) return null;
+  const rawWeight = Number(rawValue);
   const unit = textValue(form, "cargoUnit");
   const tons = unit === "kilograms" ? rawWeight / 1000 : rawWeight;
   if (!Number.isFinite(tons) || tons <= 0) throw new Error("El peso de carga no es válido.");
   return Math.round((tons + Number.EPSILON) * 1000) / 1000;
 }
 
-function freightPricingFromForm(
-  form: FormData,
-  cargoTons: number,
-): { readonly mode: FreightPricingMode; readonly rate: number | null; readonly total: number } {
+function freightPricingFromForm(form: FormData): {
+  readonly mode: FreightPricingMode | null;
+  readonly rate: number | null;
+  readonly total: number | null;
+} {
   const rawMode = textValue(form, "freightPricingMode");
+  if (rawMode === "pending") return { mode: null, rate: null, total: null };
   if (rawMode === "total") {
     return { mode: "total", rate: null, total: roundToMoney(numberValue(form, "freightAmount")) };
   }
   if (rawMode === "per_ton") {
     const rate = positiveNumberValue(form, "freightRatePerTon");
-    return { mode: "per_ton", rate: roundToRate(rate), total: roundToMoney(cargoTons * rate) };
+    return { mode: "per_ton", rate: roundToRate(rate), total: null };
   }
   throw new Error("La modalidad de flete no es válida.");
 }
@@ -5874,6 +5916,8 @@ function CollectionsPage({
   const options = useResource(optionsLoader);
   const tripId = new URLSearchParams(search).get("viaje");
   const selectedTrip = options.data?.[0].find((trip) => trip.id === tripId);
+  const invoiceTripOptions = options.data?.[0].map(toInvoiceTripOption) ?? [];
+  const selectedInvoiceTrip = invoiceTripOptions.find((trip) => trip.id === tripId);
   const form =
     options.data === null ? null : (
       <div className="admin-form-grid">
@@ -5905,12 +5949,19 @@ function CollectionsPage({
             required
           />
           <SelectField
-            defaultValue={optionDefaultValue(options.data[0].map(toTripOption), tripId)}
+            defaultValue={optionDefaultValue(invoiceTripOptions, tripId)}
             label="Viaje"
             name="tripId"
-            options={options.data[0].map(toTripOption)}
+            options={invoiceTripOptions}
             required
+            hint="Los viajes incompletos permanecen visibles, pero requieren peso y flete antes de facturar."
           />
+          {selectedInvoiceTrip?.disabled === true ? (
+            <p className="admin-form-note admin-field--wide">
+              Este viaje aún no puede facturarse:{" "}
+              {selectedInvoiceTrip.status.toLocaleLowerCase("es-PE")}.
+            </p>
+          ) : null}
           <Field label="Serie" name="series" required />
           <Field label="Número" name="number" required />
           <Field label="Emisión" name="issuedOn" type="date" required />
@@ -6534,6 +6585,7 @@ function AdminDetailPage({
               routeId={routeId}
               role={role}
               online={online}
+              onReload={tripResource.reload}
             />
           )}
         </PageState>
@@ -7524,16 +7576,20 @@ function TripDetailView({
   routeId,
   role,
   online,
+  onReload,
 }: {
   readonly detail: AdminTripDetail;
   readonly gateway: AdminDataGateway;
   readonly routeId: ProductRouteId;
   readonly role: AppRole;
   readonly online: boolean;
+  readonly onReload: () => void;
 }): React.JSX.Element {
   const allTabs = routeId === "tripSummary";
   const evidenceAccess = { evidenceGateway: gateway, online };
-  const routeTitle = `${detail.trip.origin} → ${detail.trip.destination}`;
+  const routeTitle = [detail.trip.origin, detail.trip.pickupLocation, detail.trip.destination]
+    .filter((location): location is string => location !== null && location !== "")
+    .join(" → ");
   return (
     <div className="admin-trip-detail">
       <section className="admin-card admin-detail-card">
@@ -7550,15 +7606,21 @@ function TripDetailView({
         </div>
         <dl>
           <DetailTerm label="Cliente" value={detail.clientName ?? "No asignado"} />
+          <DetailTerm label="Salida de la unidad" value={detail.trip.origin} />
+          <DetailTerm label="Punto de carga" value={detail.trip.pickupLocation ?? "Por definir"} />
+          <DetailTerm label="Destino de entrega" value={detail.trip.destination} />
           <DetailTerm label="Unidad" value={detail.vehiclePlate ?? "No asignada"} />
           <DetailTerm label="Conductor" value={detail.driverName ?? "No asignado"} />
           <DetailTerm label="Programado" value={formatDate(detail.trip.scheduledAt)} />
           <DetailTerm
             label="Flete"
             value={
-              detail.trip.freightPricingMode === "per_ton" && detail.trip.freightRatePerTon !== null
-                ? `${formatMoney(detail.trip.freightAmount)} · ${formatDecimal(detail.trip.freightRatePerTon, 4)} por t`
-                : formatMoney(detail.trip.freightAmount)
+              detail.trip.freightAmount === null || detail.trip.freightAmount <= 0
+                ? "Por definir"
+                : detail.trip.freightPricingMode === "per_ton" &&
+                    detail.trip.freightRatePerTon !== null
+                  ? `${formatMoney(detail.trip.freightAmount)} · ${formatDecimal(detail.trip.freightRatePerTon, 4)} por t`
+                  : formatMoney(detail.trip.freightAmount)
             }
           />
           <DetailTerm
@@ -7575,6 +7637,13 @@ function TripDetailView({
       </section>
       <TripDetailNavigation current={routeId} tripId={detail.trip.id} />
       <TripDetailActions detail={detail} />
+      <CommercialTermsCard
+        detail={detail}
+        gateway={gateway}
+        role={role}
+        online={online}
+        onSaved={onReload}
+      />
       {detail.vehicleId === null ? null : (
         <GpsContextCard vehicleId={detail.vehicleId} role={role} online={online} />
       )}
@@ -7621,7 +7690,11 @@ function TripDetailView({
               <section className="admin-trip-financials" aria-label="Margen directo del viaje">
                 <Kpi
                   label="Ingreso del servicio"
-                  value={formatMoney(detail.financials.serviceIncome)}
+                  value={
+                    detail.financials.serviceIncome === null
+                      ? "No disponible"
+                      : formatMoney(detail.financials.serviceIncome)
+                  }
                 />
                 <Kpi
                   label="Combustible validado"
@@ -7631,7 +7704,14 @@ function TripDetailView({
                   label="Otros gastos aprobados"
                   value={formatMoney(detail.financials.approvedExpenseCost)}
                 />
-                <Kpi label="Margen directo" value={formatMoney(detail.financials.directMargin)} />
+                <Kpi
+                  label="Margen directo"
+                  value={
+                    detail.financials.directMargin === null
+                      ? "No disponible"
+                      : formatMoney(detail.financials.directMargin)
+                  }
+                />
               </section>
               <p className="admin-calculation-note">
                 Margen directo = ingreso del servicio − combustible validado − otros gastos
@@ -7762,12 +7842,17 @@ function TripDetailActions({ detail }: { readonly detail: AdminTripDetail }): Re
         ? { label: "Programar viaje", href: manageTripPath(detail.trip.id) }
         : ["scheduled", "loading", "in_transit", "unloading"].includes(status)
           ? { label: "Ver seguimiento", href: tripDetailPath("tripOperation", detail.trip.id) }
-          : detail.settlement === null
+          : detail.trip.commercialStatus !== "complete"
             ? {
-                label: "Revisar dinero",
-                href: `${routePaths.expenses}?viaje=${encodeURIComponent(detail.trip.id)}`,
+                label: "Completar peso y flete",
+                href: tripDetailPath("tripSummary", detail.trip.id),
               }
-            : { label: "Revisar rendición", href: settlementDetailPath(detail.settlement.id) };
+            : detail.settlement === null
+              ? {
+                  label: "Revisar dinero",
+                  href: `${routePaths.expenses}?viaje=${encodeURIComponent(detail.trip.id)}`,
+                }
+              : { label: "Revisar rendición", href: settlementDetailPath(detail.settlement.id) };
   return (
     <section className="admin-card admin-context-actions" aria-label="Acciones del viaje">
       <div>
@@ -7787,10 +7872,140 @@ function TripDetailActions({ detail }: { readonly detail: AdminTripDetail }): Re
           Registrar adelanto
         </Link>
         <Link to={documentsPathForAssociation("trip", detail.trip.id)}>Agregar documento</Link>
-        <Link to={`${routePaths.collections}?viaje=${encodeURIComponent(detail.trip.id)}`}>
-          Registrar factura
-        </Link>
+        {detail.trip.commercialStatus === "complete" ? (
+          <Link to={`${routePaths.collections}?viaje=${encodeURIComponent(detail.trip.id)}`}>
+            Registrar factura
+          </Link>
+        ) : (
+          <span className="admin-context-actions__disabled" title="Completa peso y flete primero">
+            Facturación pendiente
+          </span>
+        )}
       </div>
+    </section>
+  );
+}
+
+function CommercialTermsCard({
+  detail,
+  gateway,
+  role,
+  online,
+  onSaved,
+}: {
+  readonly detail: AdminTripDetail;
+  readonly gateway: AdminDataGateway;
+  readonly role: AppRole;
+  readonly online: boolean;
+  readonly onSaved: () => void;
+}): React.JSX.Element {
+  const firstLoad = detail.loads[0] ?? null;
+  const canEdit =
+    (role === "management" || role === "administration") &&
+    online &&
+    detail.source === "remote" &&
+    detail.trip.operationalStatus !== "cancelled" &&
+    !detail.hasActiveInvoice &&
+    firstLoad !== null;
+  const statusLabel =
+    detail.trip.commercialStatus === "complete"
+      ? "Completo"
+      : detail.trip.commercialStatus === "partial"
+        ? "Parcial"
+        : detail.trip.commercialStatus === "unavailable"
+          ? "No disponible"
+          : "Pendiente";
+  const totalTons =
+    detail.loads.length === 0
+      ? null
+      : detail.loads.reduce<number | null>(
+          (sum, load) => (sum === null || load.tons === null ? null : sum + load.tons),
+          0,
+        );
+  const blockedCopy = !online
+    ? "Conéctate para editar la información comercial. La operación del conductor sigue disponible sin conexión."
+    : detail.hasActiveInvoice
+      ? "La factura activa bloquea correcciones comerciales. Si se anula, podrán editarse nuevamente con motivo."
+      : detail.trip.operationalStatus === "cancelled"
+        ? "Un viaje cancelado no admite cambios comerciales."
+        : firstLoad === null
+          ? "Este viaje no tiene una carga disponible para completar."
+          : null;
+  return (
+    <section className="admin-card admin-commercial-card" aria-labelledby="commercial-terms-title">
+      <div className="admin-card__heading">
+        <div>
+          <p className="admin-section-kicker">Información comercial</p>
+          <h2 id="commercial-terms-title">Peso y flete</h2>
+        </div>
+        <StatusChip
+          label={statusLabel}
+          tone={detail.trip.commercialStatus === "complete" ? "success" : "warning"}
+        />
+      </div>
+      <dl>
+        <DetailTerm
+          label="Peso confirmado"
+          value={totalTons === null ? "Por definir" : `${formatDecimal(totalTons, 3)} t`}
+        />
+        <DetailTerm
+          label="Flete confirmado"
+          value={
+            detail.trip.freightAmount === null || detail.trip.freightAmount <= 0
+              ? "Por definir"
+              : formatMoney(detail.trip.freightAmount)
+          }
+        />
+      </dl>
+      {canEdit ? (
+        <AdminFormDisclosure
+          label="Completar peso y flete"
+          copy="Puedes completar ambos datos o registrar primero solo el peso o la tarifa."
+        >
+          <SimpleForm
+            title="Condiciones comerciales"
+            submitLabel="Guardar información comercial"
+            description="Los datos pueden completarse por etapas. Si corriges un dato ya confirmado, indica el motivo."
+            onSubmit={async (form) => {
+              if (firstLoad === null) throw new Error("No existe una carga disponible.");
+              const cargoTons = canonicalCargoTons(form);
+              const pricing = freightPricingFromForm(form);
+              await gateway.setTripCommercialTerms({
+                tripId: detail.trip.id,
+                loadId: firstLoad.id,
+                pickupLocation: optionalText(form, "pickupLocation"),
+                cargoTons,
+                freightPricingMode: pricing.mode,
+                freightAmount: pricing.total,
+                freightRatePerTon: pricing.rate,
+                version: detail.trip.version,
+                reason: optionalText(form, "reason"),
+              });
+            }}
+            onSaved={onSaved}
+            successMessage="Información comercial actualizada."
+          >
+            <Field
+              defaultValue={detail.trip.pickupLocation ?? undefined}
+              label="Punto de carga (opcional)"
+              name="pickupLocation"
+            />
+            <TripCaptureFields
+              initialTons={firstLoad.tons}
+              initialPricingMode={detail.trip.freightPricingMode}
+              initialFreightAmount={detail.trip.freightAmount}
+              initialFreightRatePerTon={detail.trip.freightRatePerTon}
+            />
+            <TextareaField
+              label="Motivo de corrección"
+              name="reason"
+              hint="Opcional al completar por primera vez; obligatorio si cambias o eliminas un dato ya confirmado."
+            />
+          </SimpleForm>
+        </AdminFormDisclosure>
+      ) : blockedCopy === null ? null : (
+        <p className="admin-form-note">{blockedCopy}</p>
+      )}
     </section>
   );
 }
@@ -8623,7 +8838,7 @@ function SelectField({
       <select aria-describedby={helpId} defaultValue={defaultValue} name={name} required={required}>
         <option value="">Selecciona…</option>
         {options.map((option) => (
-          <option key={option.id} value={option.id}>
+          <option disabled={option.disabled} key={option.id} value={option.id}>
             {option.label} · {option.status}
           </option>
         ))}
@@ -9370,11 +9585,27 @@ function toTripOption(trip: AdminTripRow): AdminOption {
   return { id: trip.id, label: `${trip.title} · ${trip.description}`, status: trip.status };
 }
 
+function toInvoiceTripOption(trip: AdminTripRow): AdminOption {
+  const completed = trip.operationalStatus === "completed";
+  const commercialComplete = trip.commercialStatus === "complete";
+  return {
+    id: trip.id,
+    label: `${trip.title} · ${trip.description}`,
+    status: !completed
+      ? "Viaje aún no finalizado"
+      : commercialComplete
+        ? "Listo para facturar"
+        : "Falta confirmar peso y flete",
+    disabled: !completed || !commercialComplete,
+  };
+}
+
 function optionDefaultValue(
   options: readonly AdminOption[],
   requestedTripId: string | null,
 ): string | undefined {
-  return requestedTripId !== null && options.some((option) => option.id === requestedTripId)
+  return requestedTripId !== null &&
+    options.some((option) => option.id === requestedTripId && option.disabled !== true)
     ? requestedTripId
     : undefined;
 }

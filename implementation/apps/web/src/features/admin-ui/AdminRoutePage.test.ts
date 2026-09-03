@@ -34,6 +34,7 @@ function trip(status: string, overrides: Partial<AdminTripRow> = {}): AdminTripR
     vehiclePlate: null,
     driverName: null,
     origin: "Lima",
+    pickupLocation: null,
     destination: "Arequipa",
     operationalStatus: status,
     captureMode: "driver_app",
@@ -42,6 +43,7 @@ function trip(status: string, overrides: Partial<AdminTripRow> = {}): AdminTripR
     freightAmount: 0,
     freightPricingMode: "total",
     freightRatePerTon: null,
+    commercialStatus: "pending",
   };
 }
 

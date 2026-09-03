@@ -48,3 +48,4 @@ Registro canónico de decisiones duraderas. Los logs rotan en bloques determinis
 | DEC-042 | Rediseño móvil premium del Centro de Control | Accepted | 2026-08-31 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | UX/UI, shell, rutas, accesibilidad y movimiento |
 | DEC-043 | Administración reversible y auditada de accesos | Accepted | 2026-09-01 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Identidad, roles, acceso, vínculo Conductor y auditoría |
 | DEC-044 | Operación asistida por oficina sin cuenta de conductor | Accepted | 2026-09-01 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Programación, operación, identidad, sincronización y auditoría |
+| DEC-045 | Operación del viaje independiente de peso y flete | Accepted | 2026-09-02 | SESSION-20260828-011 | [DEC-041-045.md](DEC-041-045.md) | Viajes, condiciones comerciales, facturación, reportes y sincronización |

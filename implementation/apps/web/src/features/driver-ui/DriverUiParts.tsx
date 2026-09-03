@@ -79,7 +79,11 @@ export function DriverTripSummary({
       <div className="driver-trip-summary__route">
         <span>{trip.origin}</span>
         <Icon name="route" size={22} />
-        <span>{trip.destination}</span>
+        <span>
+          {trip.pickup_location === null
+            ? trip.destination
+            : `${trip.pickup_location} → ${trip.destination}`}
+        </span>
       </div>
       {compact ? null : (
         <>

@@ -5,6 +5,7 @@ export interface DriverTripRow {
   readonly id: string;
   readonly code: string;
   readonly origin: string;
+  readonly pickup_location: string | null;
   readonly destination: string;
   readonly operational_status: string;
   readonly server_operational_status: string;
@@ -56,7 +57,7 @@ export function useDriverTrips(): {
   const userId = state.session?.user.id ?? "";
   const result = useQuery<DriverTripRow>(
     `SELECT
-      t.id, t.code, t.origin, t.destination,
+      t.id, t.code, t.origin, t.pickup_location, t.destination,
       CASE
         WHEN t.operational_status IN ('completed', 'cancelled') THEN t.operational_status
         WHEN EXISTS (

@@ -49,12 +49,12 @@ select is(
 reset role;
 insert into public.trips (
   id, company_id, code, client_id, vehicle_id, driver_id, origin, destination,
-  scheduled_at, operational_status, created_by
+  scheduled_at, capture_mode_changed_at, operational_status, created_by
 ) values (
   '37000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000001',
   'TEST-OFFLINE-1', '33000000-0000-0000-0000-000000000003',
   '34000000-0000-0000-0000-000000000004', '35000000-0000-0000-0000-000000000005',
-  'Cusco', 'Lima', now() - interval '4 hours', 'scheduled',
+  'Cusco', 'Lima', now() - interval '4 hours', now() - interval '4 hours', 'scheduled',
   '31000000-0000-0000-0000-000000000001'
 );
 update public.vehicles set current_status = 'scheduled'
@@ -455,12 +455,12 @@ select is(
 reset role;
 insert into public.trips (
   id, company_id, code, client_id, vehicle_id, driver_id, origin, destination,
-  scheduled_at, operational_status, created_by
+  scheduled_at, capture_mode_changed_at, operational_status, created_by
 ) values (
   '38000000-0000-0000-0000-000000000008', '30000000-0000-0000-0000-000000000001',
   'TEST-OFFLINE-2', '33000000-0000-0000-0000-000000000003',
   '34000000-0000-0000-0000-000000000004', '35000000-0000-0000-0000-000000000005',
-  'Lima', 'Cusco', now(), 'scheduled',
+  'Lima', 'Cusco', now(), now() - interval '1 hour', 'scheduled',
   '31000000-0000-0000-0000-000000000001'
 );
 update public.vehicles set current_status = 'scheduled'

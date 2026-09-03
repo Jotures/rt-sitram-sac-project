@@ -169,7 +169,7 @@ describe("Supabase admin data gateway", () => {
 
   it("creates a trip and its load through one atomic command", async () => {
     const { client, calls } = clientWithRpc({
-      create_trip_with_load: { id: "trip-a", code: "V-0001" },
+      create_trip_draft: { id: "trip-a", code: "V-0001" },
     });
     await expect(
       createSupabaseAdminDataGateway(client).createTrip(
@@ -177,6 +177,7 @@ describe("Supabase admin data gateway", () => {
         {
           clientId: "client-a",
           origin: "Lima",
+          pickupLocation: "Urcos",
           destination: "Arequipa",
           scheduledAt: "2026-08-20T13:30:00.000Z",
           freightAmount: 3_500,
@@ -189,21 +190,84 @@ describe("Supabase admin data gateway", () => {
     ).resolves.toEqual({ id: "trip-a", code: "V-0001" });
     expect(calls).toEqual([
       {
-        name: "create_trip_with_load",
+        name: "create_trip_draft",
         args: {
-          client_id: "client-a",
-          origin: "Lima",
-          destination: "Arequipa",
-          scheduled_at: "2026-08-20T13:30:00.000Z",
-          freight_amount: 3_500,
-          cargo_description: "Tubérculos embolsados",
-          cargo_tons: 18.5,
-          freight_pricing_mode: "total",
-          freight_rate_per_ton: null,
+          p_client_id: "client-a",
+          p_origin: "Lima",
+          p_pickup_location: "Urcos",
+          p_destination: "Arequipa",
+          p_scheduled_at: "2026-08-20T13:30:00.000Z",
+          p_freight_amount: 3_500,
+          p_cargo_description: "Tubérculos embolsados",
+          p_cargo_tons: 18.5,
+          p_freight_pricing_mode: "total",
+          p_freight_rate_per_ton: null,
         },
       },
     ]);
     expect(calls[0]?.args).not.toHaveProperty("company_id");
+  });
+
+  it("creates a trip with commercial terms explicitly pending", async () => {
+    const { client, calls } = clientWithRpc({
+      create_trip_draft: { id: "trip-pending", code: "V-0002" },
+    });
+    await createSupabaseAdminDataGateway(client).createTrip(
+      { companyId: "company-a", profileId: "profile-a" },
+      {
+        clientId: "client-a",
+        origin: "Cusco",
+        pickupLocation: null,
+        destination: "Arequipa",
+        scheduledAt: "2026-09-03T09:00:00.000Z",
+        freightAmount: null,
+        cargoDescription: "Carga por pesar",
+        cargoTons: null,
+        freightPricingMode: null,
+        freightRatePerTon: null,
+      },
+    );
+    expect(calls[0]).toMatchObject({
+      name: "create_trip_draft",
+      args: {
+        p_pickup_location: null,
+        p_cargo_tons: null,
+        p_freight_pricing_mode: null,
+        p_freight_amount: null,
+        p_freight_rate_per_ton: null,
+      },
+    });
+  });
+
+  it("updates staged commercial terms only through the versioned command", async () => {
+    const { client, calls } = clientWithRpc();
+    await createSupabaseAdminDataGateway(client).setTripCommercialTerms({
+      tripId: "trip-a",
+      loadId: "load-a",
+      pickupLocation: "Urcos",
+      cargoTons: null,
+      freightPricingMode: "per_ton",
+      freightAmount: null,
+      freightRatePerTon: 100,
+      version: 7,
+      reason: null,
+    });
+    expect(calls).toEqual([
+      {
+        name: "set_trip_commercial_terms",
+        args: {
+          p_trip_id: "trip-a",
+          p_load_id: "load-a",
+          p_pickup_location: "Urcos",
+          p_cargo_tons: null,
+          p_freight_pricing_mode: "per_ton",
+          p_freight_amount: null,
+          p_freight_rate_per_ton: 100,
+          p_expected_version: 7,
+          p_reason: null,
+        },
+      },
+    ]);
   });
 
   it("only exposes operationally eligible resources for trip planning", async () => {
@@ -1386,6 +1450,7 @@ describe("connected trip detail", () => {
           administrative_status: "settlement_pending",
           financial_status: "billed",
           freight_amount: 2_000,
+          freight_pricing_mode: "total",
           additional_amount: 100,
           currency: "PEN",
           version: 5,

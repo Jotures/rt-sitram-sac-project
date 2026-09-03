@@ -88,15 +88,19 @@ export interface AdminTripRow extends AdminListRow {
   readonly vehiclePlate: string | null;
   readonly driverName: string | null;
   readonly origin: string;
+  readonly pickupLocation: string | null;
   readonly destination: string;
   readonly operationalStatus: string;
   readonly captureMode: "driver_app" | "staff_assisted";
   readonly captureModeChangedAt: string | null;
   readonly driverHasAppAccess: boolean;
-  readonly freightAmount: number;
-  readonly freightPricingMode: "total" | "per_ton";
+  readonly freightAmount: number | null;
+  readonly freightPricingMode: "total" | "per_ton" | null;
   readonly freightRatePerTon: number | null;
+  readonly commercialStatus: TripCommercialStatus;
 }
+
+export type TripCommercialStatus = "pending" | "partial" | "complete" | "unavailable";
 
 export type OperationalCycleStatus = "planned" | "active" | "completed" | "cancelled";
 export type OperationalCycleReturnStatus =
@@ -303,6 +307,10 @@ export interface AdminTripDetailLine extends AdminListRow {
   readonly hasFile?: boolean;
 }
 
+export interface AdminTripLoadLine extends AdminTripDetailLine {
+  readonly tons: number | null;
+}
+
 export interface AdminTripSettlementSummary {
   readonly id: string;
   readonly status: string;
@@ -324,6 +332,7 @@ export interface AdminTripDetail {
     readonly id: string;
     readonly code: string;
     readonly origin: string;
+    readonly pickupLocation: string | null;
     readonly destination: string;
     readonly scheduledAt: string;
     readonly startedAt: string | null;
@@ -331,9 +340,10 @@ export interface AdminTripDetail {
     readonly operationalStatus: string;
     readonly administrativeStatus: string;
     readonly financialStatus: string;
-    readonly freightAmount: number;
-    readonly freightPricingMode: "total" | "per_ton";
+    readonly freightAmount: number | null;
+    readonly freightPricingMode: "total" | "per_ton" | null;
     readonly freightRatePerTon: number | null;
+    readonly commercialStatus: TripCommercialStatus;
     readonly additionalAmount: number;
     readonly currency: string;
     readonly notes: string | null;
@@ -343,7 +353,7 @@ export interface AdminTripDetail {
   readonly vehicleId: string | null;
   readonly vehiclePlate: string | null;
   readonly driverName: string | null;
-  readonly loads: readonly AdminTripDetailLine[];
+  readonly loads: readonly AdminTripLoadLine[];
   readonly odometerEntries: readonly AdminTripDetailLine[];
   readonly initialOdometerKm: number | null;
   readonly finalOdometerKm: number | null;
@@ -353,16 +363,17 @@ export interface AdminTripDetail {
   readonly expenses: readonly AdminTripDetailLine[];
   readonly settlement: AdminTripSettlementSummary | null;
   readonly invoices: readonly AdminTripDetailLine[];
+  readonly hasActiveInvoice: boolean;
   readonly payments: readonly AdminTripDetailLine[];
   readonly documents: readonly AdminTripDetailLine[];
   readonly incidents: readonly AdminTripDetailLine[];
   readonly events: readonly AdminTripDetailLine[];
   readonly financials: {
-    readonly serviceIncome: number;
+    readonly serviceIncome: number | null;
     readonly validatedFuelCost: number;
     readonly approvedExpenseCost: number;
     readonly validatedDirectCost: number;
-    readonly directMargin: number;
+    readonly directMargin: number | null;
     readonly collectedAmount: number;
     readonly pendingCostRecords: number;
   };
@@ -381,6 +392,7 @@ export interface AdminOption {
   readonly id: string;
   readonly label: string;
   readonly status: string;
+  readonly disabled?: boolean;
 }
 
 export interface AdminTripSetupOptions {
@@ -499,15 +511,27 @@ export interface AdminDataGateway {
     input: {
       readonly clientId: string;
       readonly origin: string;
+      readonly pickupLocation: string | null;
       readonly destination: string;
       readonly scheduledAt: string;
-      readonly freightAmount: number;
+      readonly freightAmount: number | null;
       readonly cargoDescription: string;
-      readonly cargoTons: number;
-      readonly freightPricingMode: "total" | "per_ton";
+      readonly cargoTons: number | null;
+      readonly freightPricingMode: "total" | "per_ton" | null;
       readonly freightRatePerTon: number | null;
     },
   ): Promise<AdminCreatedTrip>;
+  setTripCommercialTerms(input: {
+    readonly tripId: string;
+    readonly loadId: string;
+    readonly pickupLocation: string | null;
+    readonly cargoTons: number | null;
+    readonly freightPricingMode: "total" | "per_ton" | null;
+    readonly freightAmount: number | null;
+    readonly freightRatePerTon: number | null;
+    readonly version: number;
+    readonly reason: string | null;
+  }): Promise<void>;
   approveTrip(input: { readonly tripId: string }): Promise<void>;
   scheduleTrip(input: {
     readonly tripId: string;
@@ -925,7 +949,7 @@ const selectColumns: Readonly<Record<AdminTable, string>> = {
   drivers:
     "id, profile_id, display_name, document_type, document_number, phone, license_number, license_expires_on, contract_type, contract_started_on, contract_ended_on, usual_vehicle_id, current_status, active, notes, created_at, updated_at",
   trips:
-    "id, code, client_id, vehicle_id, driver_id, cycle_id, cycle_leg_kind, cycle_sequence, origin, destination, scheduled_at, started_at, operational_finished_at, capture_mode, capture_mode_changed_at, operational_status, administrative_status, financial_status, freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency, notes, version, updated_at",
+    "id, code, client_id, vehicle_id, driver_id, cycle_id, cycle_leg_kind, cycle_sequence, origin, pickup_location, destination, scheduled_at, started_at, operational_finished_at, capture_mode, capture_mode_changed_at, operational_status, administrative_status, financial_status, freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency, notes, version, updated_at",
   operational_cycles:
     "id, code, vehicle_id, primary_driver_id, status, return_status, notes, version, started_at, ended_at, created_at",
   expenses:
@@ -1127,11 +1151,12 @@ export function createSupabaseAdminDataGateway(
   async function listTrips(): Promise<readonly AdminTripRow[]> {
     const tripRows = await readRows("trips", "scheduled_at");
     if (tripRows.length === 0) return [];
-    const [clientRows, vehicleRows, driverRows, profileRows] = await Promise.all([
+    const [clientRows, vehicleRows, driverRows, profileRows, loadRows] = await Promise.all([
       readRows("clients", "created_at"),
       readRows("vehicles", "plate"),
       readRows("drivers", "display_name"),
       readRows("profiles", "created_at"),
+      shouldPreferOffline(offline) ? Promise.resolve([]) : readRows("loads", "created_at"),
     ]);
     const activeDriverProfileIds = new Set(
       profileRows
@@ -1141,6 +1166,7 @@ export function createSupabaseAdminDataGateway(
         )
         .map(requiredId),
     );
+    const loadSummary = loadSummaryByTrip(loadRows);
     return tripRows.map((row) =>
       mapTripRow(
         row,
@@ -1155,6 +1181,7 @@ export function createSupabaseAdminDataGateway(
             })
             .map(requiredId),
         ),
+        loadSummary,
       ),
     );
   }
@@ -1736,15 +1763,27 @@ export function createSupabaseAdminDataGateway(
     const approvedExpenses = expenseRows
       .filter((row) => readText(row, "validation_status") === "validated")
       .map((row) => readNumber(row, "approved_amount") ?? readNumber(row, "amount") ?? 0);
-    const freightAmount = readNumber(tripRow, "freight_amount") ?? 0;
+    const freightAmount = readNumber(tripRow, "freight_amount");
+    const freightPricingMode = tripPricingMode(tripRow);
+    const freightRatePerTon = readNumber(tripRow, "freight_rate_per_ton");
+    const commercialStatus = tripCommercialStatus(
+      freightPricingMode,
+      freightAmount,
+      freightRatePerTon,
+      loadSummaryByTrip(loadRows).get(tripId),
+    );
     const additionalAmount = readNumber(tripRow, "additional_amount") ?? 0;
-    const directFinancials = calculateTripDirectFinancials({
-      freight: freightAmount,
-      additionalIncome: [additionalAmount],
-      fuelCosts: validatedFuel,
-      approvedExpenses,
-    });
+    const directFinancials =
+      commercialStatus === "complete" && freightAmount !== null
+        ? calculateTripDirectFinancials({
+            freight: freightAmount,
+            additionalIncome: [additionalAmount],
+            fuelCosts: validatedFuel,
+            approvedExpenses,
+          })
+        : null;
     const activePaymentRows = paymentRows.filter((row) => readText(row, "cancelled_at") === null);
+    const hasActiveInvoice = invoiceRows.some((row) => readText(row, "status") !== "cancelled");
 
     return {
       source: "remote",
@@ -1753,6 +1792,7 @@ export function createSupabaseAdminDataGateway(
         id: requiredId(tripRow),
         code: readText(tripRow, "code") ?? "Viaje sin código",
         origin: readText(tripRow, "origin") ?? "",
+        pickupLocation: readText(tripRow, "pickup_location"),
         destination: readText(tripRow, "destination") ?? "",
         scheduledAt: readText(tripRow, "scheduled_at") ?? "",
         startedAt: readText(tripRow, "started_at"),
@@ -1761,11 +1801,9 @@ export function createSupabaseAdminDataGateway(
         administrativeStatus: readText(tripRow, "administrative_status") ?? "not_required",
         financialStatus: readText(tripRow, "financial_status") ?? "unbilled",
         freightAmount,
-        freightPricingMode: tripPricingMode(tripRow),
-        freightRatePerTon:
-          tripPricingMode(tripRow) === "per_ton"
-            ? readNumber(tripRow, "freight_rate_per_ton")
-            : null,
+        freightPricingMode,
+        freightRatePerTon: freightPricingMode === "per_ton" ? freightRatePerTon : null,
+        commercialStatus,
         additionalAmount,
         currency: readText(tripRow, "currency") ?? "PEN",
         notes: readText(tripRow, "notes"),
@@ -1785,6 +1823,7 @@ export function createSupabaseAdminDataGateway(
         status: "Registrada",
         amount: null,
         date: readText(row, "created_at"),
+        tons: readNumber(row, "tons"),
       })),
       odometerEntries: odometerRows.map((row) => ({
         id: requiredId(row),
@@ -1837,6 +1876,7 @@ export function createSupabaseAdminDataGateway(
         amount: readNumber(row, "total"),
         date: readText(row, "issued_on"),
       })),
+      hasActiveInvoice,
       payments: paymentRows.map((row) => ({
         id: requiredId(row),
         title: readText(row, "payment_method") ?? "Pago",
@@ -1876,11 +1916,13 @@ export function createSupabaseAdminDataGateway(
         date: readText(row, "occurred_at"),
       })),
       financials: {
-        serviceIncome: directFinancials.grossIncome,
+        serviceIncome: directFinancials?.grossIncome ?? null,
         validatedFuelCost: validatedFuel.reduce((sum, amount) => sum + amount, 0),
         approvedExpenseCost: approvedExpenses.reduce((sum, amount) => sum + amount, 0),
-        validatedDirectCost: directFinancials.directCosts,
-        directMargin: directFinancials.directMargin,
+        validatedDirectCost:
+          validatedFuel.reduce((sum, amount) => sum + amount, 0) +
+          approvedExpenses.reduce((sum, amount) => sum + amount, 0),
+        directMargin: directFinancials?.directMargin ?? null,
         collectedAmount: activePaymentRows.reduce(
           (sum, row) => sum + (readNumber(row, "amount") ?? 0),
           0,
@@ -2229,18 +2271,32 @@ export function createSupabaseAdminDataGateway(
         phone: input.phone,
       }),
     createTrip: async (_context, input) => {
-      const result = await rpc("create_trip_with_load", {
-        client_id: input.clientId,
-        origin: input.origin,
-        destination: input.destination,
-        scheduled_at: input.scheduledAt,
-        freight_amount: input.freightAmount,
-        cargo_description: input.cargoDescription,
-        cargo_tons: input.cargoTons,
-        freight_pricing_mode: input.freightPricingMode,
-        freight_rate_per_ton: input.freightRatePerTon,
+      const result = await rpc("create_trip_draft", {
+        p_client_id: input.clientId,
+        p_origin: input.origin,
+        p_pickup_location: input.pickupLocation,
+        p_destination: input.destination,
+        p_scheduled_at: input.scheduledAt,
+        p_cargo_description: input.cargoDescription,
+        p_cargo_tons: input.cargoTons,
+        p_freight_pricing_mode: input.freightPricingMode,
+        p_freight_amount: input.freightAmount,
+        p_freight_rate_per_ton: input.freightRatePerTon,
       });
       return createdTripFromCommand(result);
+    },
+    setTripCommercialTerms: async (input) => {
+      await rpc("set_trip_commercial_terms", {
+        p_trip_id: input.tripId,
+        p_load_id: input.loadId,
+        p_pickup_location: input.pickupLocation,
+        p_cargo_tons: input.cargoTons,
+        p_freight_pricing_mode: input.freightPricingMode,
+        p_freight_amount: input.freightAmount,
+        p_freight_rate_per_ton: input.freightRatePerTon,
+        p_expected_version: input.version,
+        p_reason: input.reason,
+      });
     },
     approveTrip: async (input) => {
       await rpc("approve_trip", { trip_id: input.tripId });
@@ -2835,6 +2891,7 @@ async function loadOfflineTripDetail(
       id: requiredId(tripRow),
       code: readText(tripRow, "code") ?? "Viaje sin código",
       origin: readText(tripRow, "origin") ?? "",
+      pickupLocation: readText(tripRow, "pickup_location"),
       destination: readText(tripRow, "destination") ?? "",
       scheduledAt: readText(tripRow, "scheduled_at") ?? "",
       startedAt: readText(tripRow, "started_at"),
@@ -2842,11 +2899,15 @@ async function loadOfflineTripDetail(
       operationalStatus: readText(tripRow, "operational_status") ?? "draft",
       administrativeStatus: readText(tripRow, "administrative_status") ?? "not_required",
       financialStatus: readText(tripRow, "financial_status") ?? "unbilled",
-      freightAmount: readNumber(tripRow, "freight_amount") ?? 0,
+      freightAmount: readNumber(tripRow, "freight_amount"),
       freightPricingMode: tripPricingMode(tripRow),
       freightRatePerTon:
         tripPricingMode(tripRow) === "per_ton" ? readNumber(tripRow, "freight_rate_per_ton") : null,
       additionalAmount: readNumber(tripRow, "additional_amount") ?? 0,
+      commercialStatus:
+        tripPricingMode(tripRow) === null && readNumber(tripRow, "freight_amount") === null
+          ? "pending"
+          : "unavailable",
       currency: readText(tripRow, "currency") ?? "PEN",
       notes: readText(tripRow, "notes"),
       version: readNumber(tripRow, "version") ?? 1,
@@ -2889,6 +2950,7 @@ async function loadOfflineTripDetail(
     })),
     settlement: mapSettlementSummary(settlementRows[0]),
     invoices: [],
+    hasActiveInvoice: false,
     payments: [],
     documents: [],
     incidents: incidentRows.map((row) => ({
@@ -2902,11 +2964,11 @@ async function loadOfflineTripDetail(
     })),
     events: [],
     financials: {
-      serviceIncome: 0,
+      serviceIncome: null,
       validatedFuelCost: 0,
       approvedExpenseCost: 0,
       validatedDirectCost: 0,
-      directMargin: 0,
+      directMargin: null,
       collectedAmount: 0,
       pendingCostRecords: 0,
     },
@@ -3162,8 +3224,52 @@ function mapSupplierRow(row: Record<string, unknown>): AdminSupplierRow {
   };
 }
 
-function tripPricingMode(row: Record<string, unknown>): "total" | "per_ton" {
-  return readText(row, "freight_pricing_mode") === "per_ton" ? "per_ton" : "total";
+function tripPricingMode(row: Record<string, unknown>): "total" | "per_ton" | null {
+  const value = readText(row, "freight_pricing_mode");
+  return value === "total" || value === "per_ton" ? value : null;
+}
+
+interface TripLoadSummary {
+  readonly count: number;
+  readonly knownTons: number;
+}
+
+function loadSummaryByTrip(
+  rows: readonly Record<string, unknown>[],
+): ReadonlyMap<string, TripLoadSummary> {
+  const result = new Map<string, TripLoadSummary>();
+  for (const row of rows) {
+    const tripId = readText(row, "trip_id");
+    if (tripId === null) continue;
+    const prior = result.get(tripId) ?? { count: 0, knownTons: 0 };
+    result.set(tripId, {
+      count: prior.count + 1,
+      knownTons: prior.knownTons + (readNumber(row, "tons") === null ? 0 : 1),
+    });
+  }
+  return result;
+}
+
+function tripCommercialStatus(
+  mode: "total" | "per_ton" | null,
+  amount: number | null,
+  rate: number | null,
+  loadSummary: TripLoadSummary | undefined,
+): TripCommercialStatus {
+  if (loadSummary === undefined) {
+    return mode === null && amount === null && rate === null ? "pending" : "unavailable";
+  }
+  if (
+    mode !== null &&
+    amount !== null &&
+    amount > 0 &&
+    loadSummary.count > 0 &&
+    loadSummary.knownTons === loadSummary.count
+  )
+    return "complete";
+  if (mode === null && amount === null && rate === null && loadSummary.knownTons === 0)
+    return "pending";
+  return "partial";
 }
 
 function mapTripRow(
@@ -3172,6 +3278,7 @@ function mapTripRow(
   vehicleLabels: ReadonlyMap<string, string>,
   driverLabels: ReadonlyMap<string, string>,
   driverIdsWithAppAccess: ReadonlySet<string> = new Set(),
+  loadSummary: ReadonlyMap<string, TripLoadSummary> = new Map(),
 ): AdminTripRow {
   const clientId = readText(row, "client_id") ?? "";
   const vehicleId = readText(row, "vehicle_id");
@@ -3186,6 +3293,7 @@ function mapTripRow(
     driverId === null ? null : (driverLabels.get(driverId) ?? "Conductor sin nombre");
   const mode = tripPricingMode(row);
   const rate = readNumber(row, "freight_rate_per_ton");
+  const amount = readNumber(row, "freight_amount");
   return {
     id: requiredId(row),
     title: `${origin} → ${destination}`,
@@ -3213,15 +3321,17 @@ function mapTripRow(
     vehiclePlate,
     driverName,
     origin,
+    pickupLocation: readText(row, "pickup_location"),
     destination,
     operationalStatus: readText(row, "operational_status") ?? "draft",
     captureMode:
       readText(row, "capture_mode") === "staff_assisted" ? "staff_assisted" : "driver_app",
     captureModeChangedAt: readText(row, "capture_mode_changed_at"),
     driverHasAppAccess: driverId !== null && driverIdsWithAppAccess.has(driverId),
-    freightAmount: readNumber(row, "freight_amount") ?? 0,
+    freightAmount: amount,
     freightPricingMode: mode,
     freightRatePerTon: mode === "per_ton" ? rate : null,
+    commercialStatus: tripCommercialStatus(mode, amount, rate, loadSummary.get(requiredId(row))),
   };
 }
 

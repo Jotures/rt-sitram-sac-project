@@ -52,8 +52,8 @@ const tableColumns: Readonly<
     }>
   >
 > = {
-  OVERVIEW: { primary: "Flete contratado", secondary: "Toneladas", secondaryFormat: "tons" },
-  TRIPS_CARGO: { primary: "Flete contratado", secondary: "Toneladas", secondaryFormat: "tons" },
+  OVERVIEW: { primary: "Flete confirmado", secondary: "Toneladas", secondaryFormat: "tons" },
+  TRIPS_CARGO: { primary: "Flete confirmado", secondary: "Toneladas", secondaryFormat: "tons" },
   FLEET_UTILIZATION: {
     primary: "Utilización",
     secondary: "Horas en viaje",
