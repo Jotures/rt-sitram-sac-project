@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -87,7 +85,6 @@ const statePresentation: Readonly<
   Record<ReportMetricState, Readonly<{ label: string; color: string }>>
 > = {
   CONFIRMED: { label: "Confirmados", color: "#2e6b62" },
-  PROVISIONAL: { label: "Provisionales", color: "#98472d" },
   UNAVAILABLE: { label: "Sin dato", color: "#718086" },
 };
 
@@ -136,18 +133,6 @@ export function ReportCharts({
   const metricUnit = dataKey === "value" ? labels.primaryUnit : labels.secondaryUnit;
   const chartData = data.slice(0, 12);
   const chartHeight = Math.max(300, chartData.length * 48);
-  const quality = useMemo(
-    () =>
-      (Object.keys(statePresentation) as ReportMetricState[])
-        .map((state) => ({
-          state,
-          label: statePresentation[state].label,
-          value: chartData.filter((item) => item.state === state).length,
-        }))
-        .filter((item) => item.value > 0),
-    [chartData],
-  );
-
   useEffect(() => setMeasure("value"), [kind]);
 
   return (
@@ -243,8 +228,8 @@ export function ReportCharts({
           </BarChart>
         </ResponsiveContainer>
         <figcaption id="reports-chart-help">
-          Selecciona una barra o un registro para enfocar su detalle. Verde: confirmado; cobre:
-          provisional; gris: falta información para calcularlo.
+          Selecciona una barra o un registro para enfocar su detalle. Gris: falta información para
+          calcularlo.
           <span
             className="reports-chart__keyboard"
             aria-label="Seleccionar un registro con teclado"
@@ -257,46 +242,6 @@ export function ReportCharts({
           </span>
         </figcaption>
       </figure>
-      <aside className="reports-quality" aria-label="Calidad de los datos del gráfico">
-        <div>
-          <p className="reports-chart__eyebrow">Confianza del resultado</p>
-          <h3>Calidad de los datos</h3>
-          <p>
-            Te indica cuánto del gráfico proviene de registros confirmados y cuánto requiere
-            revisión.
-          </p>
-        </div>
-        {quality.length > 0 ? (
-          <ResponsiveContainer height={162} width="100%">
-            <PieChart>
-              <Pie
-                data={quality}
-                dataKey="value"
-                innerRadius={44}
-                outerRadius={65}
-                paddingAngle={3}
-              >
-                {quality.map((item) => (
-                  <Cell fill={statePresentation[item.state].color} key={item.state} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => [`${Number(value)} registro(s)`, "Cantidad"]} />
-            </PieChart>
-          </ResponsiveContainer>
-        ) : null}
-        <ul>
-          {quality.map((item) => (
-            <li key={item.state}>
-              <span
-                aria-hidden="true"
-                style={{ backgroundColor: statePresentation[item.state].color }}
-              />
-              <strong>{item.label}</strong>
-              <b>{item.value}</b>
-            </li>
-          ))}
-        </ul>
-      </aside>
     </div>
   );
 }

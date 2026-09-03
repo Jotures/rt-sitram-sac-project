@@ -670,11 +670,7 @@ function formatRowValue(value: number | null, currency: string | null, unit: str
 }
 
 function stateLabel(state: string): string {
-  return state === "CONFIRMED"
-    ? "Confirmado"
-    : state === "PROVISIONAL"
-      ? "Provisional"
-      : "No disponible";
+  return state === "CONFIRMED" ? "Confirmado" : "No disponible";
 }
 
 function safeCell(value: string): string {

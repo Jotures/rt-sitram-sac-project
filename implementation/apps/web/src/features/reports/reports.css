@@ -408,10 +408,6 @@
   background: #e2f0e6;
   color: #245d3b;
 }
-.reports-state--provisional {
-  background: #fff1d7;
-  color: #7a5014;
-}
 .reports-state--unavailable {
   background: #ebedef;
   color: #57666a;

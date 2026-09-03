@@ -13,7 +13,7 @@ export const REPORT_KINDS = [
 ] as const;
 
 export type ReportKind = (typeof REPORT_KINDS)[number];
-export type ReportMetricState = "CONFIRMED" | "PROVISIONAL" | "UNAVAILABLE";
+export type ReportMetricState = "CONFIRMED" | "UNAVAILABLE";
 
 export interface ReportPeriod {
   readonly from: string;

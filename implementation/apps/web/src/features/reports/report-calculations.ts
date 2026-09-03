@@ -22,7 +22,6 @@ export interface ReportSnapshot {
 }
 
 const confirmed: ReportMetricState = "CONFIRMED";
-const provisional: ReportMetricState = "PROVISIONAL";
 const unavailable: ReportMetricState = "UNAVAILABLE";
 
 function text(row: Record<string, unknown>, key: string, fallback = "Sin dato"): string {
@@ -49,7 +48,6 @@ function bool(row: Record<string, unknown>, key: string): boolean {
 
 function minState(a: ReportMetricState, b: ReportMetricState): ReportMetricState {
   if (a === unavailable || b === unavailable) return unavailable;
-  if (a === provisional || b === provisional) return provisional;
   return confirmed;
 }
 
@@ -176,8 +174,6 @@ function series(rows: readonly ReportTableRow[]): readonly ReportSeriesPoint[] {
 function tripState(item: Record<string, unknown>): ReportMetricState {
   if (number(item, "direct_cost") === null || bool(item, "has_currency_mismatch"))
     return unavailable;
-  if (!bool(item, "settlement_closed") || valueOrZero(number(item, "pending_cost_records")) > 0)
-    return provisional;
   return confirmed;
 }
 
@@ -364,7 +360,6 @@ function directMarginRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
 
 function fuelRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
   return snapshot.fuel.map((fact) => {
-    const validated = text(fact, "validation_status") === "validated";
     const distance = number(fact, "completed_distance_km");
     const cost = number(fact, "total_amount");
     return row(
@@ -374,7 +369,7 @@ function fuelRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
       cost,
       distance !== null && distance > 0 && cost !== null ? cost / distance : null,
       "money",
-      validated ? confirmed : provisional,
+      confirmed,
       {
         currency: text(fact, "currency", "PEN"),
         href: "/finanzas/combustible",
@@ -413,7 +408,7 @@ function emptyKilometreRows(snapshot: ReportSnapshot): readonly ReportTableRow[]
       item.empty,
       total === 0 ? null : (item.empty / total) * 100,
       "kilometres",
-      item.excluded > 0 ? provisional : confirmed,
+      confirmed,
       { href: `/flota/${vehicleId}`, filter: { vehicleId } },
     );
   });
@@ -421,7 +416,6 @@ function emptyKilometreRows(snapshot: ReportSnapshot): readonly ReportTableRow[]
 
 function maintenanceRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
   return snapshot.maintenance.map((fact) => {
-    const closed = text(fact, "status") === "finished";
     return row(
       text(fact, "work_order_id"),
       `Mantenimiento de ${text(fact, "vehicle_plate")}`,
@@ -429,7 +423,7 @@ function maintenanceRows(snapshot: ReportSnapshot): readonly ReportTableRow[] {
       number(fact, "cost"),
       number(fact, "immobilized_hours"),
       "money",
-      closed ? confirmed : provisional,
+      confirmed,
       {
         currency: text(fact, "currency", "PEN"),
         href: `/mantenimiento/${text(fact, "work_order_id")}`,
@@ -531,10 +525,6 @@ function overviewSummary(
     (sum, item) => sum + valueOrZero(item.value),
     0,
   );
-  const missingTons = trips.reduce(
-    (sum, trip) => sum + valueOrZero(number(trip, "missing_tons")),
-    0,
-  );
   const directState = margins.reduce<ReportMetricState>(
     (state, item) => minState(state, item.state),
     confirmed,
@@ -546,7 +536,7 @@ function overviewSummary(
       "Toneladas",
       "tons",
       trips.reduce((sum, item) => sum + valueOrZero(number(item, "tons")), 0),
-      missingTons > 0 ? provisional : confirmed,
+      confirmed,
     ),
     metric("contractedRevenue", "Flete contratado", "money", null, confirmed, revenue),
     metric("invoiced", "Facturado", "money", null, confirmed, invoiced),
