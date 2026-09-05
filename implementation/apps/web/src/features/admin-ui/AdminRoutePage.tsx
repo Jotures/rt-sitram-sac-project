@@ -16,7 +16,7 @@ import { routePaths, type ProductRouteId } from "../../app/routing/route-model";
 import { getRouteExperience } from "../../app/routing/route-experience";
 import type { AppRole, CurrentCompany } from "../identity/identity-model";
 import { Button } from "../../components/primitives/Button";
-import { Icon } from "../../components/primitives/Icon";
+import { Icon, type IconName } from "../../components/primitives/Icon";
 import { StatusChip } from "../../components/primitives/StatusChip";
 import { useIdentity } from "../identity/IdentityProvider";
 import { GpsContextCard } from "../gps-context/GpsContextCard";
@@ -592,13 +592,15 @@ function AdminFormDisclosure({
   label,
   copy,
   children,
+  open = false,
 }: {
   readonly label: string;
   readonly copy: string;
   readonly children: ReactNode;
+  readonly open?: boolean;
 }): React.JSX.Element {
   return (
-    <details className="admin-disclosure">
+    <details className="admin-disclosure" open={open}>
       <summary>
         <span className="admin-disclosure__lead">
           <span className="admin-disclosure__icon" aria-hidden="true">
@@ -2884,6 +2886,13 @@ function TripScheduledHandoff({
         Ver expediente
         <Icon name="chevron" size={16} />
       </Link>
+      <Link
+        className="admin-text-link"
+        to={`${routePaths.advances}?viaje=${encodeURIComponent(trip.id)}`}
+      >
+        Dar adelanto
+        <Icon name="chevron" size={16} />
+      </Link>
     </section>
   );
 }
@@ -2914,6 +2923,13 @@ function TripDriverOwnedNotice({
         Consultar expediente
         <Icon name="chevron" size={16} />
       </Link>
+      <Link
+        className="admin-text-link"
+        to={`${routePaths.advances}?viaje=${encodeURIComponent(trip.id)}`}
+      >
+        Dar adelanto
+        <Icon name="chevron" size={16} />
+      </Link>
     </section>
   );
 }
@@ -2930,36 +2946,50 @@ function CaptureModeChangeForm({
       Partial<Pick<AdminTripRow, "captureMode" | "captureModeChangedAt">>,
   ) => void;
 }): React.JSX.Element {
+  const [editing, setEditing] = useState(false);
   const target = trip.captureMode === "driver_app" ? "staff_assisted" : "driver_app";
   const label =
     target === "staff_assisted"
       ? "Tomar operación desde oficina"
       : "Devolver a la app del conductor";
+  if (!editing) {
+    return (
+      <Button icon="route" variant="secondary" onClick={() => setEditing(true)}>
+        {label}
+      </Button>
+    );
+  }
   return (
-    <SimpleForm
-      compact
-      description="Este cambio es inmediato, se audita con tu usuario y bloquea el canal anterior para evitar doble captura."
-      submitLabel={label}
-      title="Cambiar modo de operación"
-      onSubmit={(form) =>
-        gateway.changeTripCaptureMode({
-          tripId: trip.id,
-          captureMode: target,
-          version: trip.version,
-          reason: textValue(form, "reason"),
-        })
-      }
-      onSaved={() =>
-        onChanged({
-          operationalStatus: trip.operationalStatus,
-          status: trip.status,
-          captureMode: target,
-          captureModeChangedAt: new Date().toISOString(),
-        })
-      }
-    >
-      <TextareaField label="Motivo del cambio" name="reason" required />
-    </SimpleForm>
+    <section className="admin-inline-action" aria-label="Cambiar modo de operación">
+      <SimpleForm
+        compact
+        description="Este cambio es inmediato, se audita con tu usuario y bloquea el canal anterior para evitar doble captura."
+        submitLabel={label}
+        title="Confirmar cambio de modo"
+        onSubmit={(form) =>
+          gateway.changeTripCaptureMode({
+            tripId: trip.id,
+            captureMode: target,
+            version: trip.version,
+            reason: textValue(form, "reason"),
+          })
+        }
+        onSaved={() => {
+          setEditing(false);
+          onChanged({
+            operationalStatus: trip.operationalStatus,
+            status: trip.status,
+            captureMode: target,
+            captureModeChangedAt: new Date().toISOString(),
+          });
+        }}
+      >
+        <TextareaField label="Motivo del cambio" name="reason" required />
+      </SimpleForm>
+      <Button variant="quiet" onClick={() => setEditing(false)}>
+        Cancelar
+      </Button>
+    </section>
   );
 }
 
@@ -2976,6 +3006,8 @@ function OfficeTripConsole({
     versionDelta?: number,
   ) => void;
 }): React.JSX.Element {
+  type OfficeTripAction = "cycle" | "load" | "odometer" | "incident";
+  const [activeAction, setActiveAction] = useState<OfficeTripAction | null>(null);
   const stamp = (): string => localDateTimeInputValue();
   const transition = (
     action: "start" | "arrive" | "complete",
@@ -2995,21 +3027,85 @@ function OfficeTripConsole({
       occurredAt: dateTimeValue(form, "occurredAt"),
       loadState: extra.loadState,
       version: trip.version,
-      reason: textValue(form, "reason"),
+      reason: staffRepresentationReason(form),
     });
+  const cycleActionLabel =
+    trip.operationalStatus === "scheduled"
+      ? "Registrar inicio"
+      : trip.operationalStatus === "in_transit"
+        ? "Registrar llegada"
+        : "Registrar entrega y cierre";
   return (
-    <section className="admin-card admin-action-panel" aria-labelledby="office-trip-console-title">
-      <div>
-        <p className="admin-section-kicker">Operación desde oficina · en línea</p>
-        <h3 id="office-trip-console-title">Consola operativa</h3>
-        <p>
-          Registras como{" "}
-          {trip.captureMode === "staff_assisted" ? "Gerencia o Administración" : "oficina"}; el
-          conductor asignado se conserva como responsable del viaje.
+    <section
+      className="admin-card admin-office-console"
+      aria-labelledby="office-trip-console-title"
+    >
+      <div className="admin-office-console__summary">
+        <div className="admin-office-console__top">
+          <div>
+            <p className="admin-section-kicker">Operación desde oficina · en línea</p>
+            <h3 id="office-trip-console-title">{trip.title}</h3>
+          </div>
+          <StatusChip label={trip.status} tone={toneForStatus(trip.status)} />
+        </div>
+        <OfficeTripProgress status={trip.operationalStatus} />
+        <p className="admin-office-console__guidance">
+          El conductor sigue siendo responsable del viaje. Registra únicamente el siguiente hecho
+          real que corresponda.
         </p>
       </div>
+      <div className="admin-office-action-list" aria-label="Acciones del viaje">
+        <OfficeActionCard
+          copy="Registra el siguiente hito operativo del viaje."
+          icon="route"
+          label={cycleActionLabel}
+          onClick={() => setActiveAction("cycle")}
+          primary
+        />
+        {trip.operationalStatus !== "scheduled" ? (
+          <OfficeActionCard
+            copy="Deja la condición real de la unidad."
+            icon="truck"
+            label="Actualizar carga o vacío"
+            onClick={() => setActiveAction("load")}
+          />
+        ) : null}
+        <OfficeActionCard
+          copy="Registra una lectura visible del odómetro."
+          icon="gauge"
+          label="Registrar kilometraje"
+          onClick={() => setActiveAction("odometer")}
+        />
+        <OfficeActionCard
+          copy="Deja constancia de un hecho que requiere seguimiento."
+          icon="alert"
+          label="Registrar incidencia"
+          onClick={() => setActiveAction("incident")}
+        />
+        <Link className="admin-office-action-card" to={tripSummaryPath(trip.id)}>
+          <span>
+            <Icon name="file" size={23} />
+          </span>
+          <div>
+            <strong>Ver resumen del viaje</strong>
+            <small>Consulta ruta, estado y registros ya realizados.</small>
+          </div>
+          <Icon name="chevron" size={18} />
+        </Link>
+      </div>
+      <div className="admin-office-console__related" aria-label="Registros relacionados">
+        <Link to={`${routePaths.advances}?viaje=${encodeURIComponent(trip.id)}`}>
+          <Icon name="money" size={17} /> Dar adelanto
+        </Link>
+        <Link to={`${routePaths.fuelEntries}?viaje=${encodeURIComponent(trip.id)}`}>
+          <Icon name="fuel" size={17} /> Registrar combustible
+        </Link>
+        <Link to={`${routePaths.expenses}?viaje=${encodeURIComponent(trip.id)}`}>
+          <Icon name="money" size={17} /> Registrar gasto
+        </Link>
+      </div>
       <CaptureModeChangeForm gateway={gateway} trip={trip} onChanged={onChanged} />
-      {trip.operationalStatus === "scheduled" ? (
+      {activeAction === "cycle" && trip.operationalStatus === "scheduled" ? (
         <SimpleForm
           compact
           description="Registra la hora real, lectura de odómetro y condición de carga antes de iniciar."
@@ -3022,7 +3118,10 @@ function OfficeTripConsole({
               loadState: textValue(form, "loadState") === "empty" ? "empty" : "loaded",
             })
           }
-          onSaved={() => onChanged({ operationalStatus: "in_transit", status: "En tránsito" }, 2)}
+          onSaved={() => {
+            setActiveAction(null);
+            onChanged({ operationalStatus: "in_transit", status: "En tránsito" }, 2);
+          }}
         >
           <Field
             defaultValue={stamp()}
@@ -3045,10 +3144,10 @@ function OfficeTripConsole({
             options={loadStateOptions}
             required
           />
-          <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+          <TextareaField label="Respaldo adicional (opcional)" name="reason" />
         </SimpleForm>
       ) : null}
-      {trip.operationalStatus === "in_transit" ? (
+      {activeAction === "cycle" && trip.operationalStatus === "in_transit" ? (
         <>
           <SimpleForm
             compact
@@ -3061,7 +3160,10 @@ function OfficeTripConsole({
                 loadState: null,
               })
             }
-            onSaved={() => onChanged({ operationalStatus: "unloading", status: "En descarga" })}
+            onSaved={() => {
+              setActiveAction(null);
+              onChanged({ operationalStatus: "unloading", status: "En descarga" });
+            }}
           >
             <Field
               defaultValue={stamp()}
@@ -3070,14 +3172,12 @@ function OfficeTripConsole({
               required
               type="datetime-local"
             />
-            <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+            <TextareaField label="Respaldo adicional (opcional)" name="reason" />
           </SimpleForm>
-          <OfficeLoadStateForm gateway={gateway} trip={trip} onChanged={onChanged} />
         </>
       ) : null}
-      {trip.operationalStatus === "unloading" ? (
+      {activeAction === "cycle" && trip.operationalStatus === "unloading" ? (
         <>
-          <OfficeLoadStateForm gateway={gateway} trip={trip} onChanged={onChanged} />
           <SimpleForm
             compact
             submitLabel="Completar viaje"
@@ -3089,7 +3189,10 @@ function OfficeTripConsole({
                 loadState: null,
               })
             }
-            onSaved={() => onChanged({ operationalStatus: "completed", status: "Completado" })}
+            onSaved={() => {
+              setActiveAction(null);
+              onChanged({ operationalStatus: "completed", status: "Completado" });
+            }}
           >
             <Field
               defaultValue={stamp()}
@@ -3111,12 +3214,46 @@ function OfficeTripConsole({
               name="cargoDelivered"
               required
             />
-            <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+            <TextareaField label="Respaldo adicional (opcional)" name="reason" />
           </SimpleForm>
         </>
       ) : null}
-      <OfficeTripAncillaryForms gateway={gateway} trip={trip} />
+      {activeAction === "load" ? (
+        <OfficeLoadStateForm gateway={gateway} trip={trip} onChanged={onChanged} />
+      ) : null}
+      <OfficeTripAncillaryForms activeAction={activeAction} gateway={gateway} trip={trip} />
     </section>
+  );
+}
+
+function OfficeActionCard({
+  copy,
+  icon,
+  label,
+  onClick,
+  primary = false,
+}: {
+  readonly copy: string;
+  readonly icon: IconName;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly primary?: boolean;
+}): React.JSX.Element {
+  return (
+    <button
+      className={`admin-office-action-card${primary ? " admin-office-action-card--primary" : ""}`}
+      onClick={onClick}
+      type="button"
+    >
+      <span>
+        <Icon name={icon} size={23} />
+      </span>
+      <div>
+        <strong>{label}</strong>
+        <small>{copy}</small>
+      </div>
+      <Icon name="chevron" size={18} />
+    </button>
   );
 }
 
@@ -3124,6 +3261,34 @@ const loadStateOptions: readonly AdminOption[] = [
   { id: "loaded", label: "Con carga", status: "La unidad transporta carga" },
   { id: "empty", label: "Vacío", status: "La unidad no transporta carga" },
 ];
+
+const officeTripMilestones = ["Inicio", "En tránsito", "Llegada", "Entrega"] as const;
+
+function OfficeTripProgress({
+  status,
+}: {
+  readonly status: AdminTripRow["operationalStatus"];
+}): React.JSX.Element {
+  const current =
+    status === "in_transit" ? 1 : status === "unloading" ? 2 : status === "completed" ? 3 : 0;
+  return (
+    <ol className="admin-office-trip-progress" aria-label="Progreso operativo del viaje">
+      {officeTripMilestones.map((label, index) => {
+        const state = index < current ? "complete" : index === current ? "current" : "upcoming";
+        return (
+          <li
+            {...(state === "current" ? { "aria-current": "step" as const } : {})}
+            data-state={state}
+            key={label}
+          >
+            <span aria-hidden="true">{index + 1}</span>
+            <small>{label}</small>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 function OfficeLoadStateForm({
   gateway,
@@ -3152,7 +3317,7 @@ function OfficeLoadStateForm({
           effectiveAt: dateTimeValue(form, "effectiveAt"),
           odometerKm: numberValue(form, "odometerKm"),
           version: trip.version,
-          reason: textValue(form, "reason"),
+          reason: staffRepresentationReason(form),
           idempotencyKey: id,
         });
       }}
@@ -3169,7 +3334,7 @@ function OfficeLoadStateForm({
       />
       <Field label="Kilometraje" min="0" name="odometerKm" required step="0.01" type="number" />
       <SelectField label="Condición" name="loadState" options={loadStateOptions} required />
-      <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
+      <TextareaField label="Respaldo adicional (opcional)" name="reason" />
     </SimpleForm>
   );
 }
@@ -3177,103 +3342,106 @@ function OfficeLoadStateForm({
 function OfficeTripAncillaryForms({
   gateway,
   trip,
+  activeAction,
 }: {
   readonly gateway: AdminDataGateway;
   readonly trip: AdminTripRow;
+  readonly activeAction: "cycle" | "load" | "odometer" | "incident" | null;
 }): React.JSX.Element {
   return (
     <>
-      <div className="admin-context-actions__links" aria-label="Registros relacionados">
-        <Link to={`${routePaths.fuelEntries}?viaje=${encodeURIComponent(trip.id)}`}>
-          Registrar combustible
-        </Link>
-        <Link to={`${routePaths.expenses}?viaje=${encodeURIComponent(trip.id)}`}>
-          Registrar gasto
-        </Link>
-      </div>
-      <SimpleForm
-        compact
-        submitLabel="Registrar kilometraje"
-        title="Kilometraje"
-        onSubmit={(form) => {
-          const id = crypto.randomUUID();
-          return gateway.recordStaffTripOdometer({
-            id,
-            tripId: trip.id,
-            readingKm: numberValue(form, "readingKm"),
-            readingAt: dateTimeValue(form, "readingAt"),
-            readingType: textValue(form, "readingType"),
-            version: trip.version,
-            reason: textValue(form, "reason"),
-            idempotencyKey: id,
-          });
-        }}
-      >
-        <Field
-          defaultValue={localDateTimeInputValue()}
-          label="Fecha y hora real"
-          name="readingAt"
-          required
-          type="datetime-local"
-        />
-        <Field
-          label="Lectura de odómetro"
-          min="0"
-          name="readingKm"
-          required
-          step="0.01"
-          type="number"
-        />
-        <Field defaultValue="staff_manual" label="Tipo de lectura" name="readingType" required />
-        <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
-      </SimpleForm>
-      <SimpleForm
-        compact
-        submitLabel="Registrar incidencia"
-        title="Incidencia"
-        onSubmit={(form) => {
-          const id = crypto.randomUUID();
-          const severity = textValue(form, "severity");
-          return gateway.recordStaffTripIncident({
-            id,
-            tripId: trip.id,
-            occurredAt: dateTimeValue(form, "occurredAt"),
-            location: optionalText(form, "location"),
-            incidentType: textValue(form, "incidentType"),
-            severity:
-              severity === "critical" || severity === "high" || severity === "medium"
-                ? severity
-                : "low",
-            description: textValue(form, "description"),
-            actionTaken: optionalText(form, "actionTaken"),
-            estimatedCost: nullableNumber(form, "estimatedCost"),
-            version: trip.version,
-            reason: textValue(form, "reason"),
-            idempotencyKey: id,
-          });
-        }}
-      >
-        <Field
-          defaultValue={localDateTimeInputValue()}
-          label="Fecha y hora real"
-          name="occurredAt"
-          required
-          type="datetime-local"
-        />
-        <Field label="Tipo de incidencia" name="incidentType" required />
-        <SelectField label="Gravedad" name="severity" options={incidentSeverityOptions} required />
-        <TextareaField label="Descripción" name="description" required />
-        <Field label="Ubicación (opcional)" name="location" />
-        <TextareaField label="Acción tomada (opcional)" name="actionTaken" />
-        <Field
-          label="Costo estimado (opcional)"
-          min="0"
-          name="estimatedCost"
-          step="0.01"
-          type="number"
-        />
-        <TextareaField label="Motivo o respaldo de la representación" name="reason" required />
-      </SimpleForm>
+      {activeAction === "odometer" ? (
+        <SimpleForm
+          compact
+          submitLabel="Registrar kilometraje"
+          title="Kilometraje"
+          onSubmit={(form) => {
+            const id = crypto.randomUUID();
+            return gateway.recordStaffTripOdometer({
+              id,
+              tripId: trip.id,
+              readingKm: numberValue(form, "readingKm"),
+              readingAt: dateTimeValue(form, "readingAt"),
+              readingType: textValue(form, "readingType"),
+              version: trip.version,
+              reason: staffRepresentationReason(form),
+              idempotencyKey: id,
+            });
+          }}
+        >
+          <Field
+            defaultValue={localDateTimeInputValue()}
+            label="Fecha y hora real"
+            name="readingAt"
+            required
+            type="datetime-local"
+          />
+          <Field
+            label="Lectura de odómetro"
+            min="0"
+            name="readingKm"
+            required
+            step="0.01"
+            type="number"
+          />
+          <Field defaultValue="staff_manual" label="Tipo de lectura" name="readingType" required />
+          <TextareaField label="Respaldo adicional (opcional)" name="reason" />
+        </SimpleForm>
+      ) : null}
+      {activeAction === "incident" ? (
+        <SimpleForm
+          compact
+          submitLabel="Registrar incidencia"
+          title="Incidencia"
+          onSubmit={(form) => {
+            const id = crypto.randomUUID();
+            const severity = textValue(form, "severity");
+            return gateway.recordStaffTripIncident({
+              id,
+              tripId: trip.id,
+              occurredAt: dateTimeValue(form, "occurredAt"),
+              location: optionalText(form, "location"),
+              incidentType: textValue(form, "incidentType"),
+              severity:
+                severity === "critical" || severity === "high" || severity === "medium"
+                  ? severity
+                  : "low",
+              description: textValue(form, "description"),
+              actionTaken: optionalText(form, "actionTaken"),
+              estimatedCost: nullableNumber(form, "estimatedCost"),
+              version: trip.version,
+              reason: staffRepresentationReason(form),
+              idempotencyKey: id,
+            });
+          }}
+        >
+          <Field
+            defaultValue={localDateTimeInputValue()}
+            label="Fecha y hora real"
+            name="occurredAt"
+            required
+            type="datetime-local"
+          />
+          <Field label="Tipo de incidencia" name="incidentType" required />
+          <SelectField
+            label="Gravedad"
+            name="severity"
+            options={incidentSeverityOptions}
+            required
+          />
+          <TextareaField label="Descripción" name="description" required />
+          <Field label="Ubicación (opcional)" name="location" />
+          <TextareaField label="Acción tomada (opcional)" name="actionTaken" />
+          <Field
+            label="Costo estimado (opcional)"
+            min="0"
+            name="estimatedCost"
+            step="0.01"
+            type="number"
+          />
+          <TextareaField label="Respaldo adicional (opcional)" name="reason" />
+        </SimpleForm>
+      ) : null}
     </>
   );
 }
@@ -3810,6 +3978,7 @@ function ExpensesPage({
         <AdminFormDisclosure
           label="Registrar gasto administrativo"
           copy="Registra un gasto real en representación del viaje; requiere conexión y deja auditoría."
+          open={tripId !== null}
         >
           <StaffCaptureGuidance kind="expense" />
           <StaffCaptureFormState
@@ -3956,6 +4125,7 @@ function FuelEntriesPage({
           <AdminFormDisclosure
             label="Registrar abastecimiento administrativo"
             copy="Registra un abastecimiento real en representación del viaje; requiere conexión y deja auditoría."
+            open={tripId !== null}
           >
             <StaffCaptureGuidance kind="fuel" />
             <StaffCaptureFormState
@@ -4152,7 +4322,7 @@ function StaffExpenseForm({
             receiptType: optionalText(form, "receiptType"),
             receiptNumber: optionalText(form, "receiptNumber"),
             description: optionalText(form, "description"),
-            reason: textValue(form, "reason"),
+            reason: staffRepresentationReason(form),
             idempotencyKey: identity.idempotencyKey,
             receiptFile: fileValue(form, "receiptFile"),
           });
@@ -4188,12 +4358,7 @@ function StaffExpenseForm({
       <Field label="Monto (S/)" min="0.01" name="amount" step="0.01" type="number" required />
       <TextareaField label="Detalle (opcional)" name="description" rows={2} />
       <StaffReceiptFields />
-      <TextareaField
-        label="Motivo de registro en representación o regularización"
-        name="reason"
-        required
-        rows={3}
-      />
+      <TextareaField label="Respaldo adicional (opcional)" name="reason" rows={3} />
       <p className="admin-form-note">
         Los montos se registran en soles (PEN). Si la rendición ya se cerró, primero debe reabrirse
         con su motivo auditado.
@@ -4243,7 +4408,7 @@ function StaffFuelForm({
             paymentMethod: optionalText(form, "paymentMethod"),
             receiptType: optionalText(form, "receiptType"),
             receiptNumber: optionalText(form, "receiptNumber"),
-            reason: textValue(form, "reason"),
+            reason: staffRepresentationReason(form),
             idempotencyKey: identity.idempotencyKey,
             receiptFile: fileValue(form, "receiptFile"),
           });
@@ -4328,12 +4493,7 @@ function StaffFuelForm({
         options={paymentMethodOptions}
       />
       <StaffReceiptFields />
-      <TextareaField
-        label="Motivo de registro en representación o regularización"
-        name="reason"
-        required
-        rows={3}
-      />
+      <TextareaField label="Respaldo adicional (opcional)" name="reason" rows={3} />
       <p className="admin-form-note">
         Los montos se registran en soles (PEN). El servidor valida el viaje, la lectura y que el
         total sea consistente con cantidad × precio unitario.
@@ -4458,6 +4618,7 @@ function AdvancesPage({
           <AdminFormDisclosure
             label="Registrar adelanto"
             copy="El comando se identifica de forma segura para evitar duplicar dinero al reintentar."
+            open={tripId !== null}
           >
             {form}
           </AdminFormDisclosure>
@@ -8996,6 +9157,10 @@ function textValue(form: FormData, name: string): string {
 function optionalText(form: FormData, name: string): string | null {
   const value = form.get(name);
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function staffRepresentationReason(form: FormData): string {
+  return optionalText(form, "reason") ?? "Sin respaldo adicional declarado.";
 }
 
 function requiredUpdatedAt(row: Pick<AdminListRow, "updatedAt">): string {

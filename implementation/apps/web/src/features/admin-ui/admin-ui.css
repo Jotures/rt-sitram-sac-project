@@ -979,8 +979,8 @@
 
 .admin-trip-setup__success {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   gap: 0.75rem;
   margin-block-end: 1rem;
   padding: 0.9rem 1rem;
@@ -992,6 +992,13 @@
 
 .admin-trip-setup__success > div {
   min-width: 0;
+}
+
+.admin-trip-setup__success > .button,
+.admin-trip-setup__success > .admin-inline-action,
+.admin-trip-setup__success > .admin-text-link {
+  grid-column: 2;
+  justify-self: start;
 }
 
 .admin-trip-setup__success strong,
@@ -1928,6 +1935,240 @@
 
 .admin-action-choice .button {
   flex: 1 1 10rem;
+}
+
+.admin-office-console {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-office-console__summary {
+  position: relative;
+  padding-inline-start: 0.85rem;
+}
+
+.admin-office-console__summary::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--color-route);
+  content: "";
+}
+
+.admin-office-console__top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-office-console__top h3,
+.admin-office-console__guidance {
+  margin: 0;
+}
+
+.admin-office-console__top h3 {
+  color: var(--color-ink-950);
+  font-family: var(--font-sans);
+  font-size: 1.2rem;
+  letter-spacing: -0.025em;
+}
+
+.admin-office-trip-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-office-trip-progress li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--color-text-subtle);
+  text-align: center;
+}
+
+.admin-office-trip-progress li:not(:last-child)::after {
+  position: absolute;
+  z-index: 0;
+  top: 0.84rem;
+  left: calc(50% + 0.85rem);
+  width: calc(100% - 1.7rem);
+  height: 1px;
+  background: var(--color-border);
+  content: "";
+}
+
+.admin-office-trip-progress li > span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface-raised);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.admin-office-trip-progress li > small {
+  overflow: hidden;
+  font-size: 0.67rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-office-trip-progress li[data-state="complete"] {
+  color: var(--color-route);
+}
+
+.admin-office-trip-progress li[data-state="complete"] > span {
+  color: white;
+  border-color: var(--color-route);
+  background: var(--color-route);
+}
+
+.admin-office-trip-progress li[data-state="complete"]::after {
+  background: var(--color-route);
+}
+
+.admin-office-trip-progress li[data-state="current"] {
+  color: var(--color-copper-700);
+}
+
+.admin-office-trip-progress li[data-state="current"] > span {
+  color: white;
+  border-color: var(--color-copper-700);
+  background: var(--color-copper-700);
+  box-shadow: 0 0 0 3px var(--color-copper-100);
+}
+
+.admin-office-console__guidance {
+  margin-block-start: 0.65rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.admin-office-action-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-office-action-card {
+  display: grid;
+  width: 100%;
+  min-height: 5.2rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fade) var(--ease-productive),
+    background-color var(--motion-fade) var(--ease-productive),
+    transform var(--motion-fast) var(--ease-productive);
+}
+
+.admin-office-action-card > span {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--color-copper-700);
+  background: var(--color-copper-100);
+}
+
+.admin-office-action-card > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.admin-office-action-card strong {
+  font-size: 0.9rem;
+}
+
+.admin-office-action-card small {
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.admin-office-action-card > svg {
+  color: var(--color-text-subtle);
+}
+
+.admin-office-action-card--primary {
+  border-color: var(--color-copper-600);
+  background: var(--color-copper-50);
+}
+
+.admin-office-action-card--primary > span {
+  color: var(--color-surface-raised);
+  background: var(--color-copper-700);
+}
+
+.admin-office-console__related {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.admin-office-console__related a {
+  display: inline-flex;
+  min-height: 2.6rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-office-action-card:focus-visible,
+.admin-office-console__related a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.admin-office-action-card:active {
+  transform: scale(0.98);
+}
+
+.admin-inline-action {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-mineral-50);
+}
+
+.admin-inline-action .admin-form {
+  margin: 0;
 }
 
 .admin-action-dialog__body > .admin-form,
