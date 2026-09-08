@@ -21,11 +21,13 @@ import {
   deriveFuelUnitPrice,
   localDateTimeValue,
   parseNonNegativeNumber,
+  parseOptionalMileage,
   parsePositiveNumber,
   requireDriverText,
   toIsoFromLocalInput,
 } from "./driver-validation";
 import { useDriverCapture } from "./use-driver-capture";
+import { DriverCycleCapture, useDriverCycle } from "./DriverCycleCapture";
 
 function useActiveTripCapture() {
   const trips = useDriverTrips();
@@ -67,6 +69,7 @@ function EvidenceField({ onChange }: { readonly onChange: (file: File | null) =>
 }
 
 export function DriverFuelPage(): React.JSX.Element {
+  const { cycle } = useDriverCycle();
   const context = useActiveTripCapture();
   const suppliers = useSuppliers();
   const [odometer, setOdometer] = useState("");
@@ -78,6 +81,7 @@ export function DriverFuelPage(): React.JSX.Element {
   const [when, setWhen] = useState(() => localDateTimeValue());
   const [file, setFile] = useState<File | null>(null);
 
+  if (cycle) return <DriverCycleCapture cycle={cycle} action="fuel" />;
   if (context.isLoading) return <DriverLoadingState />;
   if (context.activeTrip === null || context.activeTrip.vehicle_id === null)
     return <NoActiveTrip />;
@@ -99,7 +103,7 @@ export function DriverFuelPage(): React.JSX.Element {
             supplierId: supplierId || null,
             fueledAt: toIsoFromLocalInput(when),
             location: location || null,
-            odometerKm: parseNonNegativeNumber(odometer, "El kilometraje"),
+            odometerKm: parseOptionalMileage(odometer, "El kilometraje"),
             quantity: fuelQuantity,
             volumeUnit: unit,
             unitPrice: deriveFuelUnitPrice(fuelQuantity, amount),
@@ -133,12 +137,11 @@ export function DriverFuelPage(): React.JSX.Element {
       <DriverFormCard>
         <form className="driver-form" onSubmit={(event) => void submit(event)}>
           <div className="driver-form__pair">
-            <DriverField label="Kilometraje">
+            <DriverField label="Kilometraje (opcional)">
               <input
                 inputMode="decimal"
                 onChange={(e) => setOdometer(e.target.value)}
                 placeholder="Ej.: 12 500"
-                required
                 value={odometer}
               />
             </DriverField>
@@ -204,6 +207,7 @@ export function DriverFuelPage(): React.JSX.Element {
 }
 
 export function DriverExpensePage(): React.JSX.Element {
+  const { cycle } = useDriverCycle();
   const context = useActiveTripCapture();
   const categories = useExpenseCategories();
   const suppliers = useSuppliers();
@@ -213,6 +217,7 @@ export function DriverExpensePage(): React.JSX.Element {
   const [description, setDescription] = useState("");
   const [when, setWhen] = useState(() => localDateTimeValue());
   const [file, setFile] = useState<File | null>(null);
+  if (cycle) return <DriverCycleCapture cycle={cycle} action="expense" />;
   if (context.isLoading) return <DriverLoadingState />;
   if (context.activeTrip === null) return <NoActiveTrip />;
   if (context.activeTrip.capture_mode !== "driver_app") return <OfficeCaptureBlocked />;

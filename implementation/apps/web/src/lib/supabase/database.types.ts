@@ -16,15 +16,18 @@ export type Database = {
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           delivered_at: string;
           delivery_method: string;
           driver_id: string;
           id: string;
           idempotency_key: string | null;
+          is_test: boolean;
           receipt_file_id: string | null;
           reference: string | null;
           status: Database["public"]["Enums"]["advance_status"];
-          trip_id: string;
+          trip_id: string | null;
+          version: number;
         };
         Insert: {
           amount: number;
@@ -33,15 +36,18 @@ export type Database = {
           created_at?: string;
           created_by: string;
           currency?: string;
+          cycle_id?: string | null;
           delivered_at: string;
           delivery_method: string;
           driver_id: string;
           id?: string;
           idempotency_key?: string | null;
+          is_test?: boolean;
           receipt_file_id?: string | null;
           reference?: string | null;
           status?: Database["public"]["Enums"]["advance_status"];
-          trip_id: string;
+          trip_id?: string | null;
+          version?: number;
         };
         Update: {
           amount?: number;
@@ -50,15 +56,18 @@ export type Database = {
           created_at?: string;
           created_by?: string;
           currency?: string;
+          cycle_id?: string | null;
           delivered_at?: string;
           delivery_method?: string;
           driver_id?: string;
           id?: string;
           idempotency_key?: string | null;
+          is_test?: boolean;
           receipt_file_id?: string | null;
           reference?: string | null;
           status?: Database["public"]["Enums"]["advance_status"];
-          trip_id?: string;
+          trip_id?: string | null;
+          version?: number;
         };
         Relationships: [
           {
@@ -74,6 +83,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "companies";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "advances_cycle_fk";
+            columns: ["company_id", "cycle_id"];
+            isOneToOne: false;
+            referencedRelation: "operational_cycles";
+            referencedColumns: ["company_id", "id"];
           },
           {
             foreignKeyName: "advances_driver_fk";
@@ -307,6 +323,138 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      cycle_balance_payments: {
+        Row: {
+          actor_id: string;
+          amount: number;
+          cancellation_reason: string | null;
+          cancelled_at: string | null;
+          company_id: string;
+          created_at: string;
+          direction: string;
+          id: string;
+          method: string;
+          occurred_at: string;
+          reference: string | null;
+          settlement_id: string;
+        };
+        Insert: {
+          actor_id: string;
+          amount: number;
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          company_id: string;
+          created_at?: string;
+          direction: string;
+          id: string;
+          method: string;
+          occurred_at: string;
+          reference?: string | null;
+          settlement_id: string;
+        };
+        Update: {
+          actor_id?: string;
+          amount?: number;
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          company_id?: string;
+          created_at?: string;
+          direction?: string;
+          id?: string;
+          method?: string;
+          occurred_at?: string;
+          reference?: string | null;
+          settlement_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cycle_balance_payments_company_id_actor_id_fkey";
+            columns: ["company_id", "actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "cycle_balance_payments_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cycle_balance_payments_company_id_settlement_id_fkey";
+            columns: ["company_id", "settlement_id"];
+            isOneToOne: false;
+            referencedRelation: "settlements";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      cycle_rendition_summaries: {
+        Row: {
+          baseline: string;
+          company_id: string;
+          cycle_id: string;
+          id: string;
+          lines: Json;
+          status: string;
+          updated_at: string;
+          updated_by: string;
+          version: number;
+        };
+        Insert: {
+          baseline: string;
+          company_id: string;
+          cycle_id: string;
+          id: string;
+          lines?: Json;
+          status: string;
+          updated_at?: string;
+          updated_by: string;
+          version?: number;
+        };
+        Update: {
+          baseline?: string;
+          company_id?: string;
+          cycle_id?: string;
+          id?: string;
+          lines?: Json;
+          status?: string;
+          updated_at?: string;
+          updated_by?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cycle_rendition_summaries_company_id_cycle_id_fkey";
+            columns: ["company_id", "cycle_id"];
+            isOneToOne: false;
+            referencedRelation: "operational_cycles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "cycle_rendition_summaries_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cycle_rendition_summaries_company_id_id_fkey";
+            columns: ["company_id", "id"];
+            isOneToOne: false;
+            referencedRelation: "settlements";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "cycle_rendition_summaries_company_id_updated_by_fkey";
+            columns: ["company_id", "updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
       };
       documents: {
         Row: {
@@ -616,6 +764,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           description: string | null;
           driver_id: string | null;
           id: string;
@@ -631,6 +780,7 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string | null;
+          version: number;
         };
         Insert: {
           amount: number;
@@ -641,6 +791,7 @@ export type Database = {
           created_at?: string;
           created_by: string;
           currency?: string;
+          cycle_id?: string | null;
           description?: string | null;
           driver_id?: string | null;
           id?: string;
@@ -656,6 +807,7 @@ export type Database = {
           updated_at?: string;
           validation_status?: Database["public"]["Enums"]["validation_status"];
           vehicle_id?: string | null;
+          version?: number;
         };
         Update: {
           amount?: number;
@@ -666,6 +818,7 @@ export type Database = {
           created_at?: string;
           created_by?: string;
           currency?: string;
+          cycle_id?: string | null;
           description?: string | null;
           driver_id?: string | null;
           id?: string;
@@ -681,6 +834,7 @@ export type Database = {
           updated_at?: string;
           validation_status?: Database["public"]["Enums"]["validation_status"];
           vehicle_id?: string | null;
+          version?: number;
         };
         Relationships: [
           {
@@ -703,6 +857,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "companies";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expenses_cycle_fk";
+            columns: ["company_id", "cycle_id"];
+            isOneToOne: false;
+            referencedRelation: "operational_cycles";
+            referencedColumns: ["company_id", "id"];
           },
           {
             foreignKeyName: "expenses_driver_fk";
@@ -801,17 +962,20 @@ export type Database = {
       };
       fuel_entries: {
         Row: {
+          approved_amount: number | null;
           company_id: string;
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           driver_id: string | null;
           fueled_at: string;
           id: string;
           idempotency_key: string | null;
           location: string | null;
-          odometer_km: number;
+          odometer_km: number | null;
           payment_method: string | null;
+          payment_source: string;
           quantity: number;
           receipt_file_id: string | null;
           receipt_number: string | null;
@@ -824,20 +988,24 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string;
+          version: number;
           volume_unit: string;
         };
         Insert: {
+          approved_amount?: number | null;
           company_id: string;
           created_at?: string;
           created_by: string;
           currency?: string;
+          cycle_id?: string | null;
           driver_id?: string | null;
           fueled_at: string;
           id?: string;
           idempotency_key?: string | null;
           location?: string | null;
-          odometer_km: number;
+          odometer_km?: number | null;
           payment_method?: string | null;
+          payment_source?: string;
           quantity: number;
           receipt_file_id?: string | null;
           receipt_number?: string | null;
@@ -850,20 +1018,24 @@ export type Database = {
           updated_at?: string;
           validation_status?: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string;
+          version?: number;
           volume_unit: string;
         };
         Update: {
+          approved_amount?: number | null;
           company_id?: string;
           created_at?: string;
           created_by?: string;
           currency?: string;
+          cycle_id?: string | null;
           driver_id?: string | null;
           fueled_at?: string;
           id?: string;
           idempotency_key?: string | null;
           location?: string | null;
-          odometer_km?: number;
+          odometer_km?: number | null;
           payment_method?: string | null;
+          payment_source?: string;
           quantity?: number;
           receipt_file_id?: string | null;
           receipt_number?: string | null;
@@ -876,6 +1048,7 @@ export type Database = {
           updated_at?: string;
           validation_status?: Database["public"]["Enums"]["validation_status"];
           vehicle_id?: string;
+          version?: number;
           volume_unit?: string;
         };
         Relationships: [
@@ -884,6 +1057,13 @@ export type Database = {
             columns: ["company_id", "created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "fuel_cycle_fk";
+            columns: ["company_id", "cycle_id"];
+            isOneToOne: false;
+            referencedRelation: "operational_cycles";
             referencedColumns: ["company_id", "id"];
           },
           {
@@ -1763,6 +1943,7 @@ export type Database = {
           total: number;
           trip_id: string;
           updated_at: string;
+          version: number;
         };
         Insert: {
           client_id: string;
@@ -1783,6 +1964,7 @@ export type Database = {
           total: number;
           trip_id: string;
           updated_at?: string;
+          version?: number;
         };
         Update: {
           client_id?: string;
@@ -1803,6 +1985,7 @@ export type Database = {
           total?: number;
           trip_id?: string;
           updated_at?: string;
+          version?: number;
         };
         Relationships: [
           {
@@ -2054,8 +2237,73 @@ export type Database = {
           },
         ];
       };
+      operation_commands: {
+        Row: {
+          actor_id: string;
+          company_id: string;
+          confirmed_at: string;
+          contract_version: number;
+          created_at: string;
+          dependency_id: string | null;
+          id: string;
+          kind: string;
+          payload: string;
+          result_id: string;
+          source_device_id: string | null;
+          status: string;
+        };
+        Insert: {
+          actor_id: string;
+          company_id: string;
+          confirmed_at?: string;
+          contract_version: number;
+          created_at?: string;
+          dependency_id?: string | null;
+          id: string;
+          kind: string;
+          payload: string;
+          result_id: string;
+          source_device_id?: string | null;
+          status?: string;
+        };
+        Update: {
+          actor_id?: string;
+          company_id?: string;
+          confirmed_at?: string;
+          contract_version?: number;
+          created_at?: string;
+          dependency_id?: string | null;
+          id?: string;
+          kind?: string;
+          payload?: string;
+          result_id?: string;
+          source_device_id?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "operation_commands_company_id_actor_id_fkey";
+            columns: ["company_id", "actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "operation_commands_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       operational_cycles: {
         Row: {
+          capture_acknowledged_at: string | null;
+          capture_acknowledged_by: string | null;
+          capture_acknowledged_device: string | null;
+          capture_channel: string;
+          capture_device_id: string | null;
           code: string;
           company_id: string;
           created_at: string;
@@ -2066,6 +2314,8 @@ export type Database = {
           notes: string | null;
           primary_driver_id: string | null;
           return_status: Database["public"]["Enums"]["return_status"];
+          returned_at: string | null;
+          scheduled_at: string | null;
           started_at: string | null;
           status: Database["public"]["Enums"]["operational_cycle_status"];
           updated_at: string;
@@ -2073,6 +2323,11 @@ export type Database = {
           version: number;
         };
         Insert: {
+          capture_acknowledged_at?: string | null;
+          capture_acknowledged_by?: string | null;
+          capture_acknowledged_device?: string | null;
+          capture_channel?: string;
+          capture_device_id?: string | null;
           code: string;
           company_id: string;
           created_at?: string;
@@ -2083,6 +2338,8 @@ export type Database = {
           notes?: string | null;
           primary_driver_id?: string | null;
           return_status?: Database["public"]["Enums"]["return_status"];
+          returned_at?: string | null;
+          scheduled_at?: string | null;
           started_at?: string | null;
           status?: Database["public"]["Enums"]["operational_cycle_status"];
           updated_at?: string;
@@ -2090,6 +2347,11 @@ export type Database = {
           version?: number;
         };
         Update: {
+          capture_acknowledged_at?: string | null;
+          capture_acknowledged_by?: string | null;
+          capture_acknowledged_device?: string | null;
+          capture_channel?: string;
+          capture_device_id?: string | null;
           code?: string;
           company_id?: string;
           created_at?: string;
@@ -2100,6 +2362,8 @@ export type Database = {
           notes?: string | null;
           primary_driver_id?: string | null;
           return_status?: Database["public"]["Enums"]["return_status"];
+          returned_at?: string | null;
+          scheduled_at?: string | null;
           started_at?: string | null;
           status?: Database["public"]["Enums"]["operational_cycle_status"];
           updated_at?: string;
@@ -2202,6 +2466,7 @@ export type Database = {
           paid_at: string;
           payment_method: string;
           reference: string | null;
+          version: number;
         };
         Insert: {
           amount: number;
@@ -2220,6 +2485,7 @@ export type Database = {
           paid_at: string;
           payment_method: string;
           reference?: string | null;
+          version?: number;
         };
         Update: {
           amount?: number;
@@ -2238,6 +2504,7 @@ export type Database = {
           paid_at?: string;
           payment_method?: string;
           reference?: string | null;
+          version?: number;
         };
         Relationships: [
           {
@@ -2369,6 +2636,71 @@ export type Database = {
           },
         ];
       };
+      settlement_evidence: {
+        Row: {
+          caption: string | null;
+          captured_at: string;
+          company_id: string;
+          created_at: string;
+          evidence_kind: string;
+          file_id: string;
+          id: string;
+          settlement_id: string;
+          uploaded_by: string;
+        };
+        Insert: {
+          caption?: string | null;
+          captured_at?: string;
+          company_id: string;
+          created_at?: string;
+          evidence_kind?: string;
+          file_id: string;
+          id?: string;
+          settlement_id: string;
+          uploaded_by: string;
+        };
+        Update: {
+          caption?: string | null;
+          captured_at?: string;
+          company_id?: string;
+          created_at?: string;
+          evidence_kind?: string;
+          file_id?: string;
+          id?: string;
+          settlement_id?: string;
+          uploaded_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "settlement_evidence_actor_fk";
+            columns: ["company_id", "uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "settlement_evidence_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "settlement_evidence_file_fk";
+            columns: ["company_id", "file_id"];
+            isOneToOne: false;
+            referencedRelation: "files";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "settlement_evidence_settlement_fk";
+            columns: ["company_id", "settlement_id"];
+            isOneToOne: false;
+            referencedRelation: "settlements";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
       settlement_expenses: {
         Row: {
           company_id: string;
@@ -2430,6 +2762,7 @@ export type Database = {
           closed_at: string | null;
           company_id: string;
           created_at: string;
+          cycle_id: string | null;
           driver_id: string;
           id: string;
           notes: string | null;
@@ -2445,7 +2778,7 @@ export type Database = {
           submitted_at: string | null;
           total_advances: number;
           total_expenses: number;
-          trip_id: string;
+          trip_id: string | null;
           updated_at: string;
           version: number;
         };
@@ -2456,6 +2789,7 @@ export type Database = {
           closed_at?: string | null;
           company_id: string;
           created_at?: string;
+          cycle_id?: string | null;
           driver_id: string;
           id?: string;
           notes?: string | null;
@@ -2471,7 +2805,7 @@ export type Database = {
           submitted_at?: string | null;
           total_advances?: number;
           total_expenses?: number;
-          trip_id: string;
+          trip_id?: string | null;
           updated_at?: string;
           version?: number;
         };
@@ -2482,6 +2816,7 @@ export type Database = {
           closed_at?: string | null;
           company_id?: string;
           created_at?: string;
+          cycle_id?: string | null;
           driver_id?: string;
           id?: string;
           notes?: string | null;
@@ -2497,7 +2832,7 @@ export type Database = {
           submitted_at?: string | null;
           total_advances?: number;
           total_expenses?: number;
-          trip_id?: string;
+          trip_id?: string | null;
           updated_at?: string;
           version?: number;
         };
@@ -2515,6 +2850,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "companies";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "settlements_cycle_fk";
+            columns: ["company_id", "cycle_id"];
+            isOneToOne: false;
+            referencedRelation: "operational_cycles";
+            referencedColumns: ["company_id", "id"];
           },
           {
             foreignKeyName: "settlements_driver_fk";
@@ -2903,7 +3245,7 @@ export type Database = {
           id: string;
           idempotency_key: string;
           load_state: Database["public"]["Enums"]["trip_load_state"];
-          odometer_km: number;
+          odometer_km: number | null;
           recorded_by: string;
           source_device_id: string | null;
           supersedes_event_id: string | null;
@@ -2918,7 +3260,7 @@ export type Database = {
           id?: string;
           idempotency_key: string;
           load_state: Database["public"]["Enums"]["trip_load_state"];
-          odometer_km: number;
+          odometer_km?: number | null;
           recorded_by: string;
           source_device_id?: string | null;
           supersedes_event_id?: string | null;
@@ -2933,7 +3275,7 @@ export type Database = {
           id?: string;
           idempotency_key?: string;
           load_state?: Database["public"]["Enums"]["trip_load_state"];
-          odometer_km?: number;
+          odometer_km?: number | null;
           recorded_by?: string;
           source_device_id?: string | null;
           supersedes_event_id?: string | null;
@@ -3147,6 +3489,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -3181,6 +3524,7 @@ export type Database = {
           freight_pricing_mode?: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton?: number | null;
           id?: string;
+          is_test?: boolean;
           notes?: string | null;
           operational_finished_at?: string | null;
           operational_status?: Database["public"]["Enums"]["trip_operational_status"];
@@ -3215,6 +3559,7 @@ export type Database = {
           freight_pricing_mode?: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton?: number | null;
           id?: string;
+          is_test?: boolean;
           notes?: string | null;
           operational_finished_at?: string | null;
           operational_status?: Database["public"]["Enums"]["trip_operational_status"];
@@ -4051,6 +4396,14 @@ export type Database = {
       };
     };
     Functions: {
+      acknowledge_cycle_device: {
+        Args: {
+          p_cycle_id: string;
+          p_device_id: string;
+          p_queue_empty: boolean;
+        };
+        Returns: undefined;
+      };
       activate_gps_odometer_authority: {
         Args: {
           p_bootstrap_mode: Database["public"]["Enums"]["gps_odometer_bootstrap_mode"];
@@ -4118,6 +4471,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4169,6 +4523,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4184,6 +4539,66 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "trips";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      apply_operation_command: {
+        Args: {
+          p_contract_version: number;
+          p_dependency_id: string;
+          p_id: string;
+          p_kind: string;
+          p_payload: string;
+          p_source_device_id: string;
+        };
+        Returns: {
+          actor_id: string;
+          company_id: string;
+          confirmed_at: string;
+          contract_version: number;
+          created_at: string;
+          dependency_id: string | null;
+          id: string;
+          kind: string;
+          payload: string;
+          result_id: string;
+          source_device_id: string | null;
+          status: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "operation_commands";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      apply_rendition_command: {
+        Args: {
+          p_contract_version: number;
+          p_dependency_id: string;
+          p_id: string;
+          p_kind: string;
+          p_payload: string;
+          p_source_device_id: string;
+        };
+        Returns: {
+          actor_id: string;
+          company_id: string;
+          confirmed_at: string;
+          contract_version: number;
+          created_at: string;
+          dependency_id: string | null;
+          id: string;
+          kind: string;
+          payload: string;
+          result_id: string;
+          source_device_id: string | null;
+          status: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "operation_commands";
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -4212,6 +4627,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4287,6 +4703,10 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      attach_settlement_file: {
+        Args: { p_entity_id: string; p_entity_type: string; p_file_id: string };
+        Returns: undefined;
+      };
       attach_trip_file: {
         Args: { p_entity_id: string; p_entity_type: string; p_file_id: string };
         Returns: string;
@@ -4355,6 +4775,15 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      change_cycle_capture_channel: {
+        Args: {
+          p_channel: string;
+          p_cycle_id: string;
+          p_device_id: string;
+          p_reason: string;
+        };
+        Returns: undefined;
+      };
       change_trip_capture_mode: {
         Args: {
           p_capture_mode: Database["public"]["Enums"]["trip_capture_mode"];
@@ -4384,6 +4813,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4403,6 +4833,47 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      close_cycle_settlement: {
+        Args: {
+          p_resolution_method: string;
+          p_resolution_note: string;
+          p_resolution_reference: string;
+          p_settlement_id: string;
+        };
+        Returns: {
+          approved_at: string | null;
+          approved_by: string | null;
+          balance: number;
+          closed_at: string | null;
+          company_id: string;
+          created_at: string;
+          cycle_id: string | null;
+          driver_id: string;
+          id: string;
+          notes: string | null;
+          resolution_direction: string | null;
+          resolution_method: string | null;
+          resolution_note: string | null;
+          resolution_reference: string | null;
+          resolved_amount: number | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          started_at: string;
+          status: Database["public"]["Enums"]["settlement_status"];
+          submitted_at: string | null;
+          total_advances: number;
+          total_expenses: number;
+          trip_id: string | null;
+          updated_at: string;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "settlements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       close_settlement:
         | {
             Args: { p_expected_version: number; p_settlement_id: string };
@@ -4413,6 +4884,7 @@ export type Database = {
               closed_at: string | null;
               company_id: string;
               created_at: string;
+              cycle_id: string | null;
               driver_id: string;
               id: string;
               notes: string | null;
@@ -4428,7 +4900,7 @@ export type Database = {
               submitted_at: string | null;
               total_advances: number;
               total_expenses: number;
-              trip_id: string;
+              trip_id: string | null;
               updated_at: string;
               version: number;
             };
@@ -4453,6 +4925,7 @@ export type Database = {
               closed_at: string | null;
               company_id: string;
               created_at: string;
+              cycle_id: string | null;
               driver_id: string;
               id: string;
               notes: string | null;
@@ -4468,7 +4941,7 @@ export type Database = {
               submitted_at: string | null;
               total_advances: number;
               total_expenses: number;
-              trip_id: string;
+              trip_id: string | null;
               updated_at: string;
               version: number;
             };
@@ -4510,6 +4983,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4557,6 +5031,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4655,6 +5130,70 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      correct_commercial_record: {
+        Args: {
+          p_expected_version: number;
+          p_id: string;
+          p_kind: string;
+          p_reason: string;
+          p_request_id: string;
+          p_values: Json;
+        };
+        Returns: string;
+      };
+      correct_cycle_money: {
+        Args: {
+          p_amount: number;
+          p_cancel: boolean;
+          p_expected_version: number;
+          p_id: string;
+          p_kind: string;
+          p_reason: string;
+          p_request_id: string;
+        };
+        Returns: Json;
+      };
+      create_cycle_settlement: {
+        Args: {
+          p_cycle_id: string;
+          p_driver_id: string;
+          p_id: string;
+          p_notes: string;
+        };
+        Returns: {
+          approved_at: string | null;
+          approved_by: string | null;
+          balance: number;
+          closed_at: string | null;
+          company_id: string;
+          created_at: string;
+          cycle_id: string | null;
+          driver_id: string;
+          id: string;
+          notes: string | null;
+          resolution_direction: string | null;
+          resolution_method: string | null;
+          resolution_note: string | null;
+          resolution_reference: string | null;
+          resolved_amount: number | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          started_at: string;
+          status: Database["public"]["Enums"]["settlement_status"];
+          submitted_at: string | null;
+          total_advances: number;
+          total_expenses: number;
+          trip_id: string | null;
+          updated_at: string;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "settlements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_operational_cycle: {
         Args: {
           p_code: string;
@@ -4666,6 +5205,11 @@ export type Database = {
           p_vehicle_id: string;
         };
         Returns: {
+          capture_acknowledged_at: string | null;
+          capture_acknowledged_by: string | null;
+          capture_acknowledged_device: string | null;
+          capture_channel: string;
+          capture_device_id: string | null;
           code: string;
           company_id: string;
           created_at: string;
@@ -4676,6 +5220,49 @@ export type Database = {
           notes: string | null;
           primary_driver_id: string | null;
           return_status: Database["public"]["Enums"]["return_status"];
+          returned_at: string | null;
+          scheduled_at: string | null;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["operational_cycle_status"];
+          updated_at: string;
+          vehicle_id: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "operational_cycles";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_quick_operational_cycle: {
+        Args: {
+          p_id: string;
+          p_idempotency_key: string;
+          p_notes: string;
+          p_primary_driver_id: string;
+          p_started_at: string;
+          p_status: Database["public"]["Enums"]["operational_cycle_status"];
+          p_vehicle_id: string;
+        };
+        Returns: {
+          capture_acknowledged_at: string | null;
+          capture_acknowledged_by: string | null;
+          capture_acknowledged_device: string | null;
+          capture_channel: string;
+          capture_device_id: string | null;
+          code: string;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          ended_at: string | null;
+          id: string;
+          idempotency_key: string | null;
+          notes: string | null;
+          primary_driver_id: string | null;
+          return_status: Database["public"]["Enums"]["return_status"];
+          returned_at: string | null;
+          scheduled_at: string | null;
           started_at: string | null;
           status: Database["public"]["Enums"]["operational_cycle_status"];
           updated_at: string;
@@ -4755,6 +5342,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4874,6 +5462,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -4927,6 +5516,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -5065,6 +5655,13 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      get_cycle_cost_report: { Args: never; Returns: Json };
+      get_cycle_rendition: { Args: { p_cycle_id: string }; Returns: Json };
+      get_cycle_settlement_snapshot: {
+        Args: { p_cycle_id: string };
+        Returns: Json;
+      };
+      get_invoice_accounts: { Args: never; Returns: Json };
       get_report_dossier_snapshot: {
         Args: {
           p_client_id?: string;
@@ -5183,6 +5780,44 @@ export type Database = {
           position_id: string;
         }[];
       };
+      issue_cycle_advance: {
+        Args: {
+          p_amount: number;
+          p_concept: string;
+          p_cycle_id: string;
+          p_delivered_at: string;
+          p_delivery_method: string;
+          p_driver_id: string;
+          p_id: string;
+          p_idempotency_key: string;
+        };
+        Returns: {
+          amount: number;
+          company_id: string;
+          concept: string | null;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          cycle_id: string | null;
+          delivered_at: string;
+          delivery_method: string;
+          driver_id: string;
+          id: string;
+          idempotency_key: string | null;
+          is_test: boolean;
+          receipt_file_id: string | null;
+          reference: string | null;
+          status: Database["public"]["Enums"]["advance_status"];
+          trip_id: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "advances";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       issue_trip_advance:
         | {
             Args: {
@@ -5287,9 +5922,170 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      manage_expense_category: {
+        Args: {
+          p_active: boolean;
+          p_expected_updated_at: string;
+          p_id: string;
+          p_name: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
       purge_expired_gps_positions: {
         Args: { p_company_id: string };
         Returns: number;
+      };
+      record_commercial_payment: {
+        Args: {
+          p_amount: number;
+          p_idempotency_key: string;
+          p_invoice_id: string;
+          p_paid_at: string;
+          p_payment_id: string;
+          p_payment_method: string;
+          p_reference: string;
+        };
+        Returns: string;
+      };
+      record_cycle_balance_payment: {
+        Args: {
+          p_amount: number;
+          p_direction: string;
+          p_expected_remaining: number;
+          p_id: string;
+          p_method: string;
+          p_occurred_at: string;
+          p_reference: string;
+          p_settlement_id: string;
+        };
+        Returns: {
+          actor_id: string;
+          amount: number;
+          cancellation_reason: string | null;
+          cancelled_at: string | null;
+          company_id: string;
+          created_at: string;
+          direction: string;
+          id: string;
+          method: string;
+          occurred_at: string;
+          reference: string | null;
+          settlement_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "cycle_balance_payments";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_cycle_expense: {
+        Args: {
+          p_amount: number;
+          p_category_id: string;
+          p_currency: string;
+          p_cycle_id: string;
+          p_description: string;
+          p_driver_id: string;
+          p_id: string;
+          p_idempotency_key: string;
+          p_incurred_at: string;
+          p_receipt_file_id: string;
+          p_receipt_number: string;
+          p_receipt_type: string;
+        };
+        Returns: {
+          amount: number;
+          approved_amount: number | null;
+          assignment_type: Database["public"]["Enums"]["assignment_type"];
+          category_id: string;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          cycle_id: string | null;
+          description: string | null;
+          driver_id: string | null;
+          id: string;
+          idempotency_key: string | null;
+          incurred_at: string;
+          receipt_file_id: string | null;
+          receipt_number: string | null;
+          receipt_type: string | null;
+          source: string;
+          source_device_id: string | null;
+          supplier_id: string | null;
+          trip_id: string | null;
+          updated_at: string;
+          validation_status: Database["public"]["Enums"]["validation_status"];
+          vehicle_id: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "expenses";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      record_cycle_fuel_entry: {
+        Args: {
+          p_currency: string;
+          p_cycle_id: string;
+          p_driver_id: string;
+          p_fueled_at: string;
+          p_id: string;
+          p_idempotency_key: string;
+          p_location: string;
+          p_odometer_km: number;
+          p_payment_method: string;
+          p_payment_source: string;
+          p_quantity: number;
+          p_receipt_file_id: string;
+          p_receipt_number: string;
+          p_receipt_type: string;
+          p_supplier_id: string;
+          p_total_amount: number;
+          p_unit_price: number;
+          p_volume_unit: string;
+        };
+        Returns: {
+          approved_amount: number | null;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          cycle_id: string | null;
+          driver_id: string | null;
+          fueled_at: string;
+          id: string;
+          idempotency_key: string | null;
+          location: string | null;
+          odometer_km: number | null;
+          payment_method: string | null;
+          payment_source: string;
+          quantity: number;
+          receipt_file_id: string | null;
+          receipt_number: string | null;
+          receipt_type: string | null;
+          source_device_id: string | null;
+          supplier_id: string | null;
+          total_amount: number;
+          trip_id: string | null;
+          unit_price: number;
+          updated_at: string;
+          validation_status: Database["public"]["Enums"]["validation_status"];
+          vehicle_id: string;
+          version: number;
+          volume_unit: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "fuel_entries";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       record_expense: {
         Args: {
@@ -5316,6 +6112,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           description: string | null;
           driver_id: string | null;
           id: string;
@@ -5331,6 +6128,7 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string | null;
+          version: number;
         };
         SetofOptions: {
           from: "*";
@@ -5360,17 +6158,20 @@ export type Database = {
           p_volume_unit: string;
         };
         Returns: {
+          approved_amount: number | null;
           company_id: string;
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           driver_id: string | null;
           fueled_at: string;
           id: string;
           idempotency_key: string | null;
           location: string | null;
-          odometer_km: number;
+          odometer_km: number | null;
           payment_method: string | null;
+          payment_source: string;
           quantity: number;
           receipt_file_id: string | null;
           receipt_number: string | null;
@@ -5383,6 +6184,7 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string;
+          version: number;
           volume_unit: string;
         };
         SetofOptions: {
@@ -5452,6 +6254,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           description: string | null;
           driver_id: string | null;
           id: string;
@@ -5467,6 +6270,7 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string | null;
+          version: number;
         };
         SetofOptions: {
           from: "*";
@@ -5496,17 +6300,20 @@ export type Database = {
           p_volume_unit: string;
         };
         Returns: {
+          approved_amount: number | null;
           company_id: string;
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           driver_id: string | null;
           fueled_at: string;
           id: string;
           idempotency_key: string | null;
           location: string | null;
-          odometer_km: number;
+          odometer_km: number | null;
           payment_method: string | null;
+          payment_source: string;
           quantity: number;
           receipt_file_id: string | null;
           receipt_number: string | null;
@@ -5519,6 +6326,7 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string;
+          version: number;
           volume_unit: string;
         };
         SetofOptions: {
@@ -5591,7 +6399,7 @@ export type Database = {
           id: string;
           idempotency_key: string;
           load_state: Database["public"]["Enums"]["trip_load_state"];
-          odometer_km: number;
+          odometer_km: number | null;
           recorded_by: string;
           source_device_id: string | null;
           supersedes_event_id: string | null;
@@ -5671,6 +6479,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -5710,7 +6519,7 @@ export type Database = {
           id: string;
           idempotency_key: string;
           load_state: Database["public"]["Enums"]["trip_load_state"];
-          odometer_km: number;
+          odometer_km: number | null;
           recorded_by: string;
           source_device_id: string | null;
           supersedes_event_id: string | null;
@@ -5795,6 +6604,7 @@ export type Database = {
           paid_at: string;
           payment_method: string;
           reference: string | null;
+          version: number;
         };
         SetofOptions: {
           from: "*";
@@ -5832,6 +6642,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -5851,8 +6662,8 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      reopen_settlement: {
-        Args: { reason: string; settlement_id: string };
+      reopen_cycle_settlement: {
+        Args: { p_reason: string; p_settlement_id: string };
         Returns: {
           approved_at: string | null;
           approved_by: string | null;
@@ -5860,6 +6671,7 @@ export type Database = {
           closed_at: string | null;
           company_id: string;
           created_at: string;
+          cycle_id: string | null;
           driver_id: string;
           id: string;
           notes: string | null;
@@ -5875,7 +6687,43 @@ export type Database = {
           submitted_at: string | null;
           total_advances: number;
           total_expenses: number;
-          trip_id: string;
+          trip_id: string | null;
+          updated_at: string;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "settlements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      reopen_settlement: {
+        Args: { reason: string; settlement_id: string };
+        Returns: {
+          approved_at: string | null;
+          approved_by: string | null;
+          balance: number;
+          closed_at: string | null;
+          company_id: string;
+          created_at: string;
+          cycle_id: string | null;
+          driver_id: string;
+          id: string;
+          notes: string | null;
+          resolution_direction: string | null;
+          resolution_method: string | null;
+          resolution_note: string | null;
+          resolution_reference: string | null;
+          resolved_amount: number | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          started_at: string;
+          status: Database["public"]["Enums"]["settlement_status"];
+          submitted_at: string | null;
+          total_advances: number;
+          total_expenses: number;
+          trip_id: string | null;
           updated_at: string;
           version: number;
         };
@@ -5953,6 +6801,51 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      review_cycle_fuel: {
+        Args: {
+          p_amount: number;
+          p_expected_updated_at: string;
+          p_id: string;
+          p_reason: string;
+          p_status: Database["public"]["Enums"]["validation_status"];
+        };
+        Returns: {
+          approved_amount: number | null;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          cycle_id: string | null;
+          driver_id: string | null;
+          fueled_at: string;
+          id: string;
+          idempotency_key: string | null;
+          location: string | null;
+          odometer_km: number | null;
+          payment_method: string | null;
+          payment_source: string;
+          quantity: number;
+          receipt_file_id: string | null;
+          receipt_number: string | null;
+          receipt_type: string | null;
+          source_device_id: string | null;
+          supplier_id: string | null;
+          total_amount: number;
+          trip_id: string | null;
+          unit_price: number;
+          updated_at: string;
+          validation_status: Database["public"]["Enums"]["validation_status"];
+          vehicle_id: string;
+          version: number;
+          volume_unit: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "fuel_entries";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       review_expense: {
         Args: {
           approved_amount: number;
@@ -5969,6 +6862,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           currency: string;
+          cycle_id: string | null;
           description: string | null;
           driver_id: string | null;
           id: string;
@@ -5984,6 +6878,7 @@ export type Database = {
           updated_at: string;
           validation_status: Database["public"]["Enums"]["validation_status"];
           vehicle_id: string | null;
+          version: number;
         };
         SetofOptions: {
           from: "*";
@@ -6017,6 +6912,33 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "gps_odometer_promotion_reviews";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      save_cycle_rendition: {
+        Args: {
+          p_baseline: string;
+          p_expected_version: number;
+          p_lines: Json;
+          p_reason: string;
+          p_settlement_id: string;
+          p_status: string;
+        };
+        Returns: {
+          baseline: string;
+          company_id: string;
+          cycle_id: string;
+          id: string;
+          lines: Json;
+          status: string;
+          updated_at: string;
+          updated_by: string;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "cycle_rendition_summaries";
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -6091,6 +7013,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6140,6 +7063,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6183,6 +7107,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6231,6 +7156,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6318,6 +7244,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6397,6 +7324,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6440,6 +7368,7 @@ export type Database = {
               freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
               freight_rate_per_ton: number | null;
               id: string;
+              is_test: boolean;
               notes: string | null;
               operational_finished_at: string | null;
               operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6512,6 +7441,7 @@ export type Database = {
           freight_pricing_mode: Database["public"]["Enums"]["freight_pricing_mode"] | null;
           freight_rate_per_ton: number | null;
           id: string;
+          is_test: boolean;
           notes: string | null;
           operational_finished_at: string | null;
           operational_status: Database["public"]["Enums"]["trip_operational_status"];
@@ -6645,6 +7575,11 @@ export type Database = {
           p_status: Database["public"]["Enums"]["operational_cycle_status"];
         };
         Returns: {
+          capture_acknowledged_at: string | null;
+          capture_acknowledged_by: string | null;
+          capture_acknowledged_device: string | null;
+          capture_channel: string;
+          capture_device_id: string | null;
           code: string;
           company_id: string;
           created_at: string;
@@ -6655,6 +7590,8 @@ export type Database = {
           notes: string | null;
           primary_driver_id: string | null;
           return_status: Database["public"]["Enums"]["return_status"];
+          returned_at: string | null;
+          scheduled_at: string | null;
           started_at: string | null;
           status: Database["public"]["Enums"]["operational_cycle_status"];
           updated_at: string;

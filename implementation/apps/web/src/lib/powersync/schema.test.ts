@@ -87,8 +87,11 @@ describe("PowerSync product schema", () => {
     }
   });
 
-  it("allows local writes only for append-only captures and transition requests", () => {
+  it("allows local writes for departures, funds, captures and transition requests", () => {
     expect(POWER_SYNC_WRITABLE_TABLES).toEqual([
+      "operation_commands",
+      "operational_cycles",
+      "advances",
       "odometer_entries",
       "fuel_entries",
       "expenses",

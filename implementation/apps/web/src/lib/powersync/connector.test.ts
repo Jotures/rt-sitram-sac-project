@@ -48,6 +48,24 @@ function database(crud: CrudEntry[]) {
 }
 
 describe("PowerSync upload recovery", () => {
+  it("keeps dependent money for review without sending it when the departure failed", async () => {
+    const rpc = vi.fn(async () => ({ error: null }));
+    const local = database([
+      {
+        id: ids.valid,
+        table: "operation_commands",
+        op: UpdateType.PUT,
+        opData: { dependency_id: ids.trip },
+      } as unknown as CrudEntry,
+    ]);
+    Object.assign(local.value, { getAll: vi.fn(async () => [{ id: "failed-departure" }]) });
+    await new SupabasePowerSyncConnector(client(rpc), "https://sync.example.test").uploadData(
+      local.value,
+    );
+    expect(rpc).not.toHaveBeenCalled();
+    expect(local.execute.mock.calls[1]?.[1]).toContain("DEPENDENCY_FAILED");
+    expect(local.complete).toHaveBeenCalledOnce();
+  });
   it("dead-letters a terminal entry and continues the rest of the batch", async () => {
     const rpc = vi.fn(async () => ({ error: null }));
     const local = database([expense(ids.invalid, "not-a-uuid"), expense(ids.valid)]);

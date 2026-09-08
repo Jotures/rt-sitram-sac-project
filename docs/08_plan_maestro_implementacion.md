@@ -1,5 +1,7 @@
 # Plan Maestro de Implementación — Sistema Digital R&T SITRAM SAC
 
+> Prioridad vigente DEC-047/048: [modo rápido general y rendición Cusco–Cusco](planes/operacion-agil-cusco-cusco/00_indice.md). Este expediente contiene el avance, las pruebas y el despliegue autorizados. GPS/OCR quedan fuera del desarrollo futuro; su código y pruebas históricas se conservan.
+
 > **Propósito:** transformar la arquitectura empresarial, funcional, de datos, UX/UI y técnica de R&T SITRAM SAC en un programa de implementación ejecutable, incremental y verificable, desde la validación tecnológica inicial hasta el piloto productivo y despliegue completo.
 
 **Empresa:** R&T SITRAM SAC  

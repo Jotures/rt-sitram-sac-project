@@ -1,4 +1,5 @@
 import type { AppRole } from "../../features/identity/identity-model";
+import type { OperationMode } from "../../features/operation-mode/operation-mode";
 import { canRoleAccessRoute, routePaths, type ProductRouteId } from "../routing/route-model";
 
 export interface NavigationItem {
@@ -55,8 +56,8 @@ const administrativeNavigation: readonly NavigationGroupSeed[] = [
       },
       {
         id: "operationalCycles",
-        label: "Ciclos operativos",
-        description: "Agrupa tramos relacionados sin mezclar los cierres de cada viaje.",
+        label: "Salidas",
+        description: "Reúne servicios y la cuenta del conductor en cada salida Cusco–Cusco.",
       },
       {
         id: "tripEvaluator",
@@ -111,7 +112,7 @@ const administrativeNavigation: readonly NavigationGroupSeed[] = [
       {
         id: "settlements",
         label: "Rendiciones",
-        description: "Revisa y regulariza los gastos de cada viaje.",
+        description: "Revisa gastos, hojas y saldos de cada salida.",
       },
       {
         id: "collections",
@@ -157,11 +158,6 @@ const administrativeNavigation: readonly NavigationGroupSeed[] = [
         id: "profileSettings",
         label: "Perfiles",
         description: "Administra los accesos y roles de las personas.",
-      },
-      {
-        id: "gpsOdometerSettings",
-        label: "Odómetro GPS",
-        description: "Revisa la fuente autorizada del kilometraje GPS.",
       },
       {
         id: "profile",
@@ -227,22 +223,75 @@ function toNavigationItem(seed: NavigationItemSeed): NavigationItem {
   return { ...seed, path: routePaths[seed.id] };
 }
 
-export function getDesktopNavigation(role: AppRole): readonly NavigationGroup[] {
+export function getDesktopNavigation(
+  role: AppRole,
+  mode: OperationMode = "full",
+): readonly NavigationGroup[] {
   if (role === "driver") {
     return [{ label: "", items: driverNavigation.map(toNavigationItem) }];
   }
 
-  return administrativeNavigation.flatMap((group) => {
+  const navigation = administrativeNavigation.flatMap((group) => {
     const items = group.items
       .filter((item) => canRoleAccessRoute(role, item.id))
       .map(toNavigationItem);
 
     return items.length === 0 ? [] : [{ label: group.label, items }];
   });
+  if (mode === "full") return navigation;
+  const items = navigation.flatMap((group) => group.items);
+  const daily: readonly ProductRouteId[] = [
+    "home",
+    "operationalCycles",
+    "trips",
+    "advances",
+    "expenses",
+    "fuelEntries",
+    "settlements",
+    "collections",
+    "search",
+    "profile",
+  ];
+  return [
+    {
+      label: "Día a día",
+      items: daily.flatMap((id) => {
+        const item = items.find((candidate) => candidate.id === id);
+        return item === undefined
+          ? []
+          : [
+              {
+                ...item,
+                label:
+                  id === "trips"
+                    ? "Servicios y fletes"
+                    : id === "advances"
+                      ? "Dinero entregado"
+                      : item.label,
+              },
+            ];
+      }),
+    },
+    { label: "Más herramientas", items: items.filter((item) => !daily.includes(item.id)) },
+  ].filter((group) => group.items.length > 0);
 }
 
-export function getMobileNavigation(role: AppRole): readonly NavigationItem[] {
+export function getMobileNavigation(
+  role: AppRole,
+  mode: OperationMode = "full",
+): readonly NavigationItem[] {
   const seeds = role === "driver" ? driverNavigation : administrativeMobileNavigation;
 
-  return seeds.filter((item) => canRoleAccessRoute(role, item.id)).map(toNavigationItem);
+  return seeds
+    .map((item) =>
+      role !== "driver" && mode === "quick" && item.id === "trips"
+        ? {
+            id: "operationalCycles" as const,
+            label: "Salidas",
+            description: "Registra el recorrido y sus movimientos.",
+          }
+        : item,
+    )
+    .filter((item) => canRoleAccessRoute(role, item.id))
+    .map(toNavigationItem);
 }

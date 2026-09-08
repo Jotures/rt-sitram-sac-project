@@ -53,6 +53,17 @@ export async function loadIdentityFromPowerSync(
 }
 
 export async function loadProductIdentity(userId: string): Promise<IdentityLoadResult> {
+  if (
+    typeof navigator !== "undefined" &&
+    !navigator.onLine &&
+    powerSyncIdentityStore.read() === userId
+  ) {
+    try {
+      return await loadIdentityFromPowerSync(userId);
+    } catch {
+      /* Continue with the regular error handling. */
+    }
+  }
   const remote = await loadCurrentIdentity(userId);
   if (remote.ok || (remote.reason !== "QUERY_FAILED" && remote.reason !== "NOT_CONFIGURED"))
     return remote;

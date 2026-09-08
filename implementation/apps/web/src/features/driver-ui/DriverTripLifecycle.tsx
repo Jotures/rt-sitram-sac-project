@@ -10,7 +10,7 @@ import {
 import { CaptureResult, DriverField, formatTripStatus } from "./DriverUiParts";
 import { getOrCreateDeviceId } from "./device-and-evidence";
 import type { DriverTripRow } from "./driver-data";
-import { parseNonNegativeNumber } from "./driver-validation";
+import { parseOptionalMileage } from "./driver-validation";
 
 export function DriverTripLifecycle({
   trip,
@@ -77,7 +77,7 @@ export function DriverTripLifecycle({
   const submitStart = (event: FormEvent): void => {
     event.preventDefault();
     void execute(async () => {
-      const initialMileage = parseNonNegativeNumber(mileage, "El kilometraje inicial");
+      const initialMileage = parseOptionalMileage(mileage, "El kilometraje inicial");
       if (trip.vehicle_id === null) throw new Error("El viaje no tiene una unidad asignada.");
       await enqueueTripStartWithLoadState(
         database,
@@ -101,7 +101,7 @@ export function DriverTripLifecycle({
       return;
     }
     void execute(async () => {
-      const finalMileage = parseNonNegativeNumber(mileage, "El kilometraje final");
+      const finalMileage = parseOptionalMileage(mileage, "El kilometraje final");
       await enqueueTripTransition(
         database,
         {
@@ -151,7 +151,7 @@ export function DriverTripLifecycle({
                 ? "Ingresa la lectura visible de la unidad."
                 : `Última lectura sincronizada: ${trip.current_odometer_km.toLocaleString("es-PE")} km.`
             }
-            label="Kilometraje inicial"
+            label="Kilometraje inicial (opcional)"
           >
             <input
               disabled={busy}
@@ -191,7 +191,7 @@ export function DriverTripLifecycle({
               void execute(async () => {
                 if (trip.vehicle_id === null)
                   throw new Error("El viaje no tiene una unidad asignada.");
-                const nextMileage = parseNonNegativeNumber(
+                const nextMileage = parseOptionalMileage(
                   loadStateMileage,
                   "El kilometraje del cambio de carga",
                 );
@@ -254,7 +254,7 @@ export function DriverTripLifecycle({
 
       {projectedStatus === "unloading" ? (
         <form className="driver-form" onSubmit={submitCompletion}>
-          <DriverField label="Kilometraje final">
+          <DriverField label="Kilometraje final (opcional)">
             <input
               disabled={busy}
               inputMode="decimal"

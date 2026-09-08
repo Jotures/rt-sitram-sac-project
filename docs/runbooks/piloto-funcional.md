@@ -1,5 +1,7 @@
 # Runbook — piloto funcional aislado
 
+> Para la validación vigente de operación ágil, usar el [expediente Cusco–Cusco](../planes/operacion-agil-cusco-cusco/04_validacion_y_despliegue.md): empresa QA aislada dentro del Supabase actual, sin otro proyecto ni rama; pruebas SQL revertidas y accesos sintéticos sin invitaciones, desactivados al terminar.
+
 **Estado:** piloto aprobado por el propietario el 2026-08-20; se preserva como runbook de referencia.  
 **Autoridad:** DEC-023 y el registro de la sesión `SESSION-20260813-010`.  
 **Propósito:** preparar, validar, suspender o recuperar un piloto sin mezclar datos de prueba con la operación oficial.

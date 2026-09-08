@@ -751,6 +751,7 @@ function RecoveryDecisionSheet({
 function attachmentEntityLabel(type: FailedAttachmentRow["entity_type"]): string {
   const labels: Readonly<Record<FailedAttachmentRow["entity_type"], string>> = {
     fuel_entry: "Combustible",
+    settlement: "Rendición",
     expense: "Gasto",
     incident: "Incidencia",
   };

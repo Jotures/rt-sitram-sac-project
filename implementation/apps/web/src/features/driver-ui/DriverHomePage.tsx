@@ -11,6 +11,7 @@ import {
 } from "./DriverUiParts";
 import { useDriverTrips } from "./driver-data";
 import { DriverTripLifecycle } from "./DriverTripLifecycle";
+import { DriverCycleCapture, useDriverCycle } from "./DriverCycleCapture";
 
 const driverRegisterActions = [
   {
@@ -64,6 +65,7 @@ export function getDriverHomeRegisterGuidance(
 }
 
 export function DriverHomePage(): React.JSX.Element {
+  const { cycle } = useDriverCycle();
   const { state } = useIdentity();
   const trips = useDriverTrips();
   const name = state.status === "READY" ? state.identity.profile.displayName : "Conductor";
@@ -72,6 +74,7 @@ export function DriverHomePage(): React.JSX.Element {
     trips.nextTrip !== null,
   );
 
+  if (cycle) return <DriverCycleCapture cycle={cycle} />;
   if (trips.isLoading) {
     return <DriverLoadingState />;
   }

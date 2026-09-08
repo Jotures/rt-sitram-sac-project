@@ -7,6 +7,7 @@ import { IdentityProvider } from "./features/identity/IdentityProvider";
 import "./index.css";
 import { registerServiceWorker } from "./lib/pwa/service-worker";
 import { PowerSyncProvider } from "./lib/powersync/PowerSyncProvider";
+import { OperationModeProvider } from "./features/operation-mode/OperationModeProvider";
 
 const rootElement = document.getElementById("root");
 
@@ -19,7 +20,9 @@ createRoot(rootElement).render(
     <AuthProvider>
       <PowerSyncProvider>
         <IdentityProvider>
-          <App />
+          <OperationModeProvider>
+            <App />
+          </OperationModeProvider>
         </IdentityProvider>
       </PowerSyncProvider>
     </AuthProvider>

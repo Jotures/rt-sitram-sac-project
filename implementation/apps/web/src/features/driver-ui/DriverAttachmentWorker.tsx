@@ -48,14 +48,19 @@ export function DriverAttachmentWorker(): null {
       if (!active || running.current) return;
       running.current = true;
       try {
-        const result = await processNextAttachment({
-          database,
-          blobs,
-          remote,
-          companyId,
-          profileId,
-        });
-        if (result === "UPLOADED" && active) void tick();
+        while (active) {
+          const result = await processNextAttachment({
+            database,
+            blobs,
+            remote,
+            companyId,
+            profileId,
+          });
+          if (result !== "UPLOADED") break;
+        }
+      } catch {
+        // SQLite can close during an identity change. Keep the durable queue
+        // intact; the next eligible worker retries after the store is ready.
       } finally {
         running.current = false;
       }

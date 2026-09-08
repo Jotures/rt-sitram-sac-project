@@ -60,6 +60,26 @@ function clientWithRows(rowsByTable: Readonly<Record<string, readonly Record<str
 }
 
 describe("Supabase admin data gateway", () => {
+  it("uses authoritative remaining amounts including all partial and cancelled payments", async () => {
+    const { client } = clientWithRpc({
+      get_invoice_accounts: [
+        {
+          id: "invoice-a",
+          series: "QA",
+          number: "1",
+          status: "partial",
+          total: 1000,
+          remaining: 700,
+          client_name: "Client",
+          trip_code: "TR-1",
+          issued_on: "2026-09-07",
+        },
+      ],
+    });
+    const rows = await createSupabaseAdminDataGateway(client).listInvoices();
+    expect(rows[0]?.amount).toBe(700);
+    expect(rows[0]?.description).toContain("Client");
+  });
   it("composes a vehicle centre from only associated records", async () => {
     const gateway = createSupabaseAdminDataGateway(
       clientWithRows({
@@ -697,7 +717,7 @@ describe("Supabase admin data gateway", () => {
       "issue_trip_advance",
       "close_settlement",
       "create_trip_invoice",
-      "register_invoice_payment",
+      "record_commercial_payment",
       "resolve_alert",
     ]);
     expect(calls[0]?.args).toEqual({

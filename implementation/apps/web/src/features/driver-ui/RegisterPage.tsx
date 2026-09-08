@@ -1,8 +1,11 @@
 import { DriverActionCard, DriverPageHeader } from "./DriverUiParts";
 import { useDriverTrips } from "./driver-data";
+import { DriverCycleCapture, useDriverCycle } from "./DriverCycleCapture";
 
 export function DriverRegisterPage(): React.JSX.Element {
   const { activeTrip } = useDriverTrips();
+  const { cycle } = useDriverCycle();
+  if (cycle) return <DriverCycleCapture cycle={cycle} />;
 
   return (
     <div className="driver-page">

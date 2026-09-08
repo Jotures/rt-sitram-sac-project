@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
   Suspense,
+  Children,
+  isValidElement,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -19,6 +21,10 @@ import { Button } from "../../components/primitives/Button";
 import { Icon, type IconName } from "../../components/primitives/Icon";
 import { StatusChip } from "../../components/primitives/StatusChip";
 import { useIdentity } from "../identity/IdentityProvider";
+import { MoreDetails, useOperationMode } from "../operation-mode/OperationModeProvider";
+import { QuickWorkspace } from "../operation-mode/QuickWorkspace";
+import { CycleRendition } from "../operation-mode/CycleRendition";
+import { CycleCosts } from "../operation-mode/CycleCosts";
 import { GpsContextCard } from "../gps-context/GpsContextCard";
 import { GpsFleetExceptionsCard } from "../gps-context/GpsFleetExceptionsCard";
 import { getSupabaseClient } from "../../lib/supabase";
@@ -56,6 +62,7 @@ import {
 } from "./admin-data";
 import { summarizeAdminDashboard } from "./admin-dashboard-model";
 import "./admin-ui.css";
+import { CommercialCorrections } from "../operation-mode/AccountAdministration";
 
 const LazyReportsPage = lazy(async () => {
   const module = await import("../reports/ReportsPage");
@@ -94,8 +101,8 @@ const pageCopy: Readonly<
     description: "Asignación de unidad y conductor a viajes aprobados.",
   },
   operationalCycles: {
-    title: "Ciclos operativos",
-    description: "Relaciona ida, retorno o continuación sin mezclar los cierres de cada viaje.",
+    title: "Salidas operativas",
+    description: "Registra una salida Cusco–Cusco en segundos y agrega sus servicios después.",
   },
   expenses: {
     title: "Gastos",
@@ -172,6 +179,7 @@ export function AdminRoutePage({
   pathname,
   search,
 }: AdminRoutePageProps): React.JSX.Element {
+  const { quick } = useOperationMode();
   const { state: identityState } = useIdentity();
   const localDatabase = usePowerSync();
   const isOnline = useNetworkOnline();
@@ -218,6 +226,17 @@ export function AdminRoutePage({
   const resolvedSearch = search ?? globalThis.location?.search ?? "";
 
   const page = (() => {
+    if (quick && (role === "management" || role === "administration")) {
+      if (["home", "newTrip", "operationalCycles", "scheduling"].includes(routeId)) {
+        return (
+          <QuickWorkspace
+            gateway={gateway}
+            context={context}
+            initialAction={routeId === "newTrip" ? "departure" : undefined}
+          />
+        );
+      }
+    }
     switch (routeId) {
       case "home":
         return (
@@ -259,7 +278,14 @@ export function AdminRoutePage({
           />
         );
       case "operationalCycles":
-        return <OperationalCyclesPage gateway={gateway} canMutate={canMutate} />;
+        return (
+          <OperationalCyclesPage
+            gateway={gateway}
+            canMutate={canMutate}
+            profileId={identityState.identity.profile.id}
+            role={role}
+          />
+        );
       case "expenses":
         return (
           <ExpensesPage
@@ -291,6 +317,8 @@ export function AdminRoutePage({
           />
         );
       case "settlements":
+        if (new URLSearchParams(resolvedSearch).get("salida"))
+          return <CycleRendition cycleId={new URLSearchParams(resolvedSearch).get("salida")!} />;
         return (
           <SettlementsPage
             gateway={gateway}
@@ -355,6 +383,7 @@ export function AdminRoutePage({
               />
             }
           >
+            <CycleCosts />
             <LazyReportsPage />
           </Suspense>
         );
@@ -401,6 +430,7 @@ export function AdminRoutePage({
             settlementId={detailIdFromPath(routeId, resolvedPathname)}
             gateway={gateway}
             canMutate={canMutate}
+            context={context}
             role={role}
           />
         );
@@ -426,12 +456,35 @@ export function AdminRoutePage({
   return (
     <>
       {isOnline ? null : (
-        <ReadOnlyNotice copy="Sin conexión: se muestra la última copia local sincronizada donde está disponible. Las altas, revisiones, cambios de estado y cierres requieren conexión." />
+        <ReadOnlyNotice
+          copy={
+            quick
+              ? "Sin conexión: las operaciones rápidas quedan guardadas en este dispositivo. La confirmación de recursos, las revisiones y los cierres se harán al reconectar."
+              : "Sin conexión: se muestra la última copia local sincronizada donde está disponible. Las revisiones y los cierres requieren conexión."
+          }
+        />
       )}
       <div
         className={`admin-route admin-route--${routeExperience.family} admin-route--${routeExperience.variant}`}
       >
-        {page}
+        {quick &&
+          (role === "management" || role === "administration") &&
+          (routeId === "advances" || routeId === "expenses" || routeId === "fuelEntries") && (
+            <QuickWorkspace
+              gateway={gateway}
+              context={context}
+              compact
+              initialAction={
+                routeId === "advances" ? "advance" : routeId === "expenses" ? "expense" : "fuel"
+              }
+            />
+          )}
+        {quick &&
+        (routeId === "advances" || routeId === "expenses" || routeId === "fuelEntries") ? (
+          <MoreDetails label="Consultar y revisar registros anteriores">{page}</MoreDetails>
+        ) : (
+          page
+        )}
       </div>
     </>
   );
@@ -3113,7 +3166,7 @@ function OfficeTripConsole({
           title="Inicio"
           onSubmit={(form) =>
             transition("start", form, {
-              odometerKm: numberValue(form, "odometerKm"),
+              odometerKm: nullableNumber(form, "odometerKm"),
               cargoDelivered: false,
               loadState: textValue(form, "loadState") === "empty" ? "empty" : "loaded",
             })
@@ -3131,10 +3184,9 @@ function OfficeTripConsole({
             type="datetime-local"
           />
           <Field
-            label="Kilometraje inicial"
+            label="Kilometraje inicial (opcional)"
             min="0"
             name="odometerKm"
-            required
             step="0.01"
             type="number"
           />
@@ -3184,7 +3236,7 @@ function OfficeTripConsole({
             title="Entrega y cierre"
             onSubmit={(form) =>
               transition("complete", form, {
-                odometerKm: numberValue(form, "odometerKm"),
+                odometerKm: nullableNumber(form, "odometerKm"),
                 cargoDelivered: booleanValue(form, "cargoDelivered"),
                 loadState: null,
               })
@@ -3202,10 +3254,9 @@ function OfficeTripConsole({
               type="datetime-local"
             />
             <Field
-              label="Kilometraje final"
+              label="Kilometraje final (opcional)"
               min="0"
               name="odometerKm"
-              required
               step="0.01"
               type="number"
             />
@@ -3315,7 +3366,7 @@ function OfficeLoadStateForm({
           tripId: trip.id,
           loadState: textValue(form, "loadState") === "empty" ? "empty" : "loaded",
           effectiveAt: dateTimeValue(form, "effectiveAt"),
-          odometerKm: numberValue(form, "odometerKm"),
+          odometerKm: nullableNumber(form, "odometerKm"),
           version: trip.version,
           reason: staffRepresentationReason(form),
           idempotencyKey: id,
@@ -3332,7 +3383,7 @@ function OfficeLoadStateForm({
         required
         type="datetime-local"
       />
-      <Field label="Kilometraje" min="0" name="odometerKm" required step="0.01" type="number" />
+      <Field label="Kilometraje" min="0" name="odometerKm" step="0.01" type="number" />
       <SelectField label="Condición" name="loadState" options={loadStateOptions} required />
       <TextareaField label="Respaldo adicional (opcional)" name="reason" />
     </SimpleForm>
@@ -3498,12 +3549,15 @@ function OperationalCyclesPage({
 }: {
   readonly gateway: AdminDataGateway;
   readonly canMutate: boolean;
+  readonly profileId: string;
+  readonly role: AppRole;
 }): React.JSX.Element {
   const cyclesLoader = useCallback(() => gateway.listOperationalCycles(), [gateway]);
   const cycles = useResource(cyclesLoader);
   const optionsLoader = useCallback(() => gateway.loadOperationalCycleOptions(), [gateway]);
   const options = useResource(optionsLoader);
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
+  const { mode: captureMode } = useOperationMode();
   const [commandIdentity, setCommandIdentity] = useState(makeOperationalCycleCommandIdentity);
   const renewCommandIdentity = useCallback(
     () => setCommandIdentity(makeOperationalCycleCommandIdentity()),
@@ -3527,8 +3581,8 @@ function OperationalCyclesPage({
     />
   ) : (
     <AdminFormDisclosure
-      label="Crear ciclo operativo"
-      copy="Agrupa viajes relacionados por continuidad; cada viaje conserva su propio dinero y cierre."
+      label="Registrar salida rápida"
+      copy="Unidad, conductor y estado primero; cliente, carga y flete pueden agregarse después."
     >
       <SimpleForm
         onDirty={renewCommandIdentity}
@@ -3542,34 +3596,53 @@ function OperationalCyclesPage({
           try {
             await gateway.createOperationalCycle({
               id: commandIdentity.id,
-              code: textValue(form, "code"),
+              code: `SAL-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${commandIdentity.id.slice(0, 6).toUpperCase()}`,
               vehicleId: textValue(form, "vehicleId"),
-              primaryDriverId: optionalText(form, "primaryDriverId"),
-              returnStatus: operationalCycleReturnStatusValue(form, "returnStatus"),
-              notes: optionalText(form, "notes"),
+              primaryDriverId: textValue(form, "primaryDriverId"),
+              returnStatus:
+                captureMode === "full"
+                  ? operationalCycleReturnStatusValue(form, "returnStatus")
+                  : "unidentified",
+              notes: captureMode === "full" ? optionalText(form, "notes") : null,
               idempotencyKey: commandIdentity.idempotencyKey,
+              status: operationalCycleStatusValue(form, "status"),
+              startedAt: optionalText(form, "startedAt")
+                ? new Date(textValue(form, "startedAt")).toISOString()
+                : null,
             });
           } catch (error) {
             throw new Error(operationalCycleErrorMessage(error));
           }
         }}
       >
-        <Field label="Código del ciclo" name="code" required />
         <SelectField label="Unidad" name="vehicleId" options={options.data.vehicles} required />
         <SelectField
-          label="Conductor principal (opcional)"
+          label="Conductor responsable"
           name="primaryDriverId"
           options={options.data.drivers}
+          required
         />
         <OperationalCycleSelectField
-          label="Situación del retorno"
-          name="returnStatus"
-          options={operationalCycleReturnStatusOptions}
+          label="Estado de la salida"
+          name="status"
+          options={operationalCycleStatusOptions.filter(
+            (option) => option.value === "planned" || option.value === "active",
+          )}
         />
-        <TextareaField label="Notas operativas (opcional)" name="notes" />
+        <Field label="Fecha y hora de partida (opcional)" name="startedAt" type="datetime-local" />
+        {captureMode === "full" ? (
+          <>
+            <OperationalCycleSelectField
+              label="Retorno (opcional)"
+              name="returnStatus"
+              options={operationalCycleReturnStatusOptions}
+            />
+            <TextareaField label="Notas operativas (opcional)" name="notes" />
+          </>
+        ) : null}
         <p className="admin-form-note">
-          Un ciclo ordena continuidad, ida o retorno. No mueve flete, adelantos, gastos ni
-          rendiciones entre viajes.
+          La salida es la cuenta Cusco–Cusco del conductor. Los servicios comerciales y su cobranza
+          se agregan sin crear clientes o fletes ficticios.
         </p>
       </SimpleForm>
     </AdminFormDisclosure>
@@ -3578,18 +3651,22 @@ function OperationalCyclesPage({
   return (
     <>
       <PageHeader
-        title="Ciclos operativos"
-        description="Relaciona tramos de una misma unidad sin convertir varios servicios en un solo cierre financiero."
+        title="Salidas operativas"
+        description="Una salida agrupa la ida, el retorno y la rendición del conductor sin mezclar servicios comerciales."
       />
+      <p className="admin-muted">
+        La forma de trabajar se configura para todo el sistema en{" "}
+        <Link to="/perfil">Mi perfil</Link>.
+      </p>
       {createForm}
       <section className="admin-card admin-list-card">
         <div className="admin-card__heading">
-          <h2>Ciclos registrados</h2>
+          <h2>Salidas registradas</h2>
           {cycles.status === "READY" ? <span>{cycles.data?.length ?? 0}</span> : null}
         </div>
         <PageState
           resource={cycles}
-          emptyCopy="Aún no hay ciclos. Crea uno cuando necesites controlar ida, retorno o continuidad."
+          emptyCopy="Aún no hay salidas. Registra una cuando la unidad parta de Cusco."
         >
           {(rows) => (
             <RecordTable
@@ -3597,7 +3674,7 @@ function OperationalCyclesPage({
               kind="cycles"
               actions={(row) => (
                 <Button variant="quiet" onClick={() => setSelectedCycleId(row.id)}>
-                  Ver ciclo
+                  Ver salida
                 </Button>
               )}
             />
@@ -3620,6 +3697,10 @@ function OperationalCyclesPage({
 type OperationalCycleDialog =
   | { readonly kind: "update" }
   | { readonly kind: "add" }
+  | { readonly kind: "advance" }
+  | { readonly kind: "expense" }
+  | { readonly kind: "fuel" }
+  | { readonly kind: "settlement" }
   | { readonly kind: "remove"; readonly tripId: string; readonly tripTitle: string };
 
 function OperationalCycleDetailPanel({
@@ -3692,6 +3773,8 @@ function OperationalCycleDetailContent({
   const acceptsTrips = detail.cycle.status === "planned" || detail.cycle.status === "active";
   const canUpdate = canMutate && acceptsTrips;
   const canAddTrip = canMutate && acceptsTrips && detail.eligibleTrips.length > 0;
+  const captureOptionsLoader = useCallback(() => gateway.loadStaffCaptureOptions(), [gateway]);
+  const captureOptions = useResource(captureOptionsLoader);
   return (
     <>
       <section className="admin-card admin-detail-card admin-list-card">
@@ -3719,17 +3802,37 @@ function OperationalCycleDetailContent({
           <DetailTerm label="Notas" value={detail.cycle.notes ?? "Sin notas"} />
         </dl>
         <p className="admin-form-note">
-          Este ciclo solo ordena los viajes relacionados. Los importes, adelantos, gastos,
-          rendiciones y cierres siguen siendo independientes por viaje.
+          Esta salida reúne la ida, el retorno y la rendición del conductor. Los servicios
+          comerciales conservan sus clientes, fletes y cobranza por separado.
         </p>
-        {canUpdate ? (
+        {canMutate && detail.cycle.status !== "cancelled" ? (
           <div className="admin-row-buttons">
-            <Button variant="quiet" onClick={() => onOpenDialog({ kind: "update" })}>
-              Actualizar ciclo
-            </Button>
+            {canUpdate && (
+              <Button variant="quiet" onClick={() => onOpenDialog({ kind: "update" })}>
+                Actualizar salida
+              </Button>
+            )}
             {canAddTrip ? (
               <Button variant="quiet" onClick={() => onOpenDialog({ kind: "add" })}>
                 Añadir viaje
+              </Button>
+            ) : null}
+            {detail.cycle.primaryDriverId !== null && acceptsTrips ? (
+              <>
+                <Button variant="quiet" onClick={() => onOpenDialog({ kind: "advance" })}>
+                  Entregar dinero
+                </Button>
+                <Button variant="quiet" onClick={() => onOpenDialog({ kind: "expense" })}>
+                  Registrar gasto
+                </Button>
+                <Button variant="quiet" onClick={() => onOpenDialog({ kind: "fuel" })}>
+                  Registrar combustible
+                </Button>
+              </>
+            ) : null}
+            {detail.cycle.primaryDriverId !== null ? (
+              <Button variant="quiet" onClick={() => onOpenDialog({ kind: "settlement" })}>
+                Abrir rendición
               </Button>
             ) : null}
           </div>
@@ -3773,6 +3876,7 @@ function OperationalCycleDetailContent({
           detail={detail}
           dialog={dialog}
           gateway={gateway}
+          captureOptions={captureOptions.data}
           onClose={onCloseDialog}
           onSaved={() => {
             onCloseDialog();
@@ -3788,12 +3892,14 @@ function OperationalCycleDialogForm({
   detail,
   dialog,
   gateway,
+  captureOptions,
   onClose,
   onSaved,
 }: {
   readonly detail: AdminOperationalCycleDetail;
   readonly dialog: OperationalCycleDialog;
   readonly gateway: AdminDataGateway;
+  readonly captureOptions: AdminStaffCaptureOptions | null;
   readonly onClose: () => void;
   readonly onSaved: () => void;
 }): React.JSX.Element {
@@ -3888,6 +3994,239 @@ function OperationalCycleDialogForm({
           <p className="admin-form-note">
             La asociación conserva el servicio y el cierre financiero propio de cada viaje.
           </p>
+        </SimpleForm>
+      </AdminActionDialog>
+    );
+  }
+
+  if (dialog.kind === "advance") {
+    return (
+      <AdminActionDialog
+        title={`Entregar dinero a ${detail.cycle.title}`}
+        copy="El adelanto queda ligado a toda la salida Cusco–Cusco y se rendirá al retorno."
+        onClose={onClose}
+      >
+        <SimpleForm
+          compact
+          submitLabel="Registrar entrega"
+          title="Entrega de fondo"
+          onSaved={onSaved}
+          onSubmit={async (form) => {
+            if (detail.cycle.primaryDriverId === null)
+              throw new Error("La salida necesita un conductor responsable.");
+            await gateway.issueCycleAdvance({
+              id: crypto.randomUUID(),
+              cycleId: detail.cycle.id,
+              driverId: detail.cycle.primaryDriverId,
+              deliveredAt: new Date().toISOString(),
+              amount: numberValue(form, "amount"),
+              deliveryMethod: textValue(form, "deliveryMethod"),
+              concept: optionalText(form, "concept"),
+              idempotencyKey: crypto.randomUUID(),
+            });
+          }}
+        >
+          <Field label="Monto (S/)" name="amount" type="number" min="0.01" step="0.01" required />
+          <Field
+            label="Medio de entrega"
+            name="deliveryMethod"
+            placeholder="Efectivo, transferencia…"
+            required
+          />
+          <Field label="Concepto (opcional)" name="concept" />
+        </SimpleForm>
+      </AdminActionDialog>
+    );
+  }
+
+  if (dialog.kind === "expense") {
+    if (captureOptions === null)
+      return (
+        <AdminActionDialog
+          title={`Registrar gasto en ${detail.cycle.title}`}
+          copy="Preparando las categorías de gasto de la empresa."
+          onClose={onClose}
+        >
+          <p className="admin-muted">Preparando categorías de gasto…</p>
+        </AdminActionDialog>
+      );
+    return (
+      <AdminActionDialog
+        title={`Registrar gasto en ${detail.cycle.title}`}
+        copy="El gasto queda ligado a la salida y se revisará antes del cierre de la rendición."
+        onClose={onClose}
+      >
+        <SimpleForm
+          compact
+          submitLabel="Registrar gasto"
+          title="Gasto de la salida"
+          onSaved={onSaved}
+          onSubmit={async (form) => {
+            if (detail.cycle.primaryDriverId === null)
+              throw new Error("La salida necesita un conductor responsable.");
+            await gateway.recordCycleExpense({
+              id: crypto.randomUUID(),
+              cycleId: detail.cycle.id,
+              driverId: detail.cycle.primaryDriverId,
+              categoryId: textValue(form, "categoryId"),
+              incurredAt: dateTimeValue(form, "incurredAt"),
+              amount: positiveNumberValue(form, "amount"),
+              description: optionalText(form, "description"),
+              receiptType: optionalText(form, "receiptType"),
+              receiptNumber: optionalText(form, "receiptNumber"),
+              idempotencyKey: crypto.randomUUID(),
+            });
+          }}
+        >
+          <SelectField
+            label="Categoría"
+            name="categoryId"
+            options={captureOptions.expenseCategories}
+            required
+          />
+          <Field
+            defaultValue={localDateTimeInputValue()}
+            label="Fecha y hora real"
+            name="incurredAt"
+            type="datetime-local"
+            required
+          />
+          <Field label="Monto (S/)" name="amount" type="number" min="0.01" step="0.01" required />
+          <TextareaField label="Detalle (opcional)" name="description" rows={2} />
+          <Field label="Tipo de comprobante (opcional)" name="receiptType" />
+          <Field label="Número de comprobante (opcional)" name="receiptNumber" />
+        </SimpleForm>
+      </AdminActionDialog>
+    );
+  }
+
+  if (dialog.kind === "fuel") {
+    if (captureOptions === null)
+      return (
+        <AdminActionDialog
+          title={`Registrar combustible en ${detail.cycle.title}`}
+          copy="Preparando los proveedores de combustible de la empresa."
+          onClose={onClose}
+        >
+          <p className="admin-muted">Preparando proveedores de combustible…</p>
+        </AdminActionDialog>
+      );
+    return (
+      <AdminActionDialog
+        title={`Registrar combustible en ${detail.cycle.title}`}
+        copy="Indica quién pagó el abastecimiento para separar el costo operativo del saldo del conductor."
+        onClose={onClose}
+      >
+        <SimpleForm
+          compact
+          submitLabel="Registrar combustible"
+          title="Abastecimiento de la salida"
+          onSaved={onSaved}
+          onSubmit={async (form) => {
+            if (detail.cycle.primaryDriverId === null)
+              throw new Error("La salida necesita un conductor responsable.");
+            await gateway.recordCycleFuelEntry({
+              id: crypto.randomUUID(),
+              cycleId: detail.cycle.id,
+              driverId: detail.cycle.primaryDriverId,
+              fueledAt: dateTimeValue(form, "fueledAt"),
+              location: optionalText(form, "location"),
+              odometerKm: nullableNumber(form, "odometerKm"),
+              quantity: positiveNumberValue(form, "quantity"),
+              volumeUnit: textValue(form, "volumeUnit") === "liter" ? "liter" : "gallon",
+              unitPrice: numberValue(form, "unitPrice"),
+              totalAmount: positiveNumberValue(form, "totalAmount"),
+              paymentSource:
+                textValue(form, "paymentSource") === "driver_fund" ? "driver_fund" : "company",
+              paymentMethod: optionalText(form, "paymentMethod"),
+              supplierId: optionalText(form, "supplierId"),
+              receiptType: optionalText(form, "receiptType"),
+              receiptNumber: optionalText(form, "receiptNumber"),
+              idempotencyKey: crypto.randomUUID(),
+            });
+          }}
+        >
+          <Field
+            defaultValue={localDateTimeInputValue()}
+            label="Fecha y hora real"
+            name="fueledAt"
+            type="datetime-local"
+            required
+          />
+          <Field label="Ubicación (opcional)" name="location" />
+          <Field label="Odómetro (opcional)" name="odometerKm" type="number" min="0" step="0.01" />
+          <Field label="Cantidad" name="quantity" type="number" min="0.001" step="0.001" required />
+          <SelectField
+            label="Unidad de volumen"
+            name="volumeUnit"
+            options={[
+              { id: "gallon", label: "Galón", status: "" },
+              { id: "liter", label: "Litro", status: "" },
+            ]}
+            required
+          />
+          <Field
+            label="Precio unitario (S/)"
+            name="unitPrice"
+            type="number"
+            min="0"
+            step="0.0001"
+            required
+          />
+          <Field
+            label="Monto total (S/)"
+            name="totalAmount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+          />
+          <SelectField
+            label="Origen del pago"
+            name="paymentSource"
+            options={[
+              { id: "company", label: "Pago de empresa", status: "" },
+              { id: "driver_fund", label: "Fondo del conductor", status: "" },
+            ]}
+            required
+          />
+          <Field label="Medio de pago (opcional)" name="paymentMethod" />
+          <SelectField
+            label="Grifo o proveedor (opcional)"
+            name="supplierId"
+            options={captureOptions.suppliers}
+          />
+          <Field label="Tipo de comprobante (opcional)" name="receiptType" />
+          <Field label="Número de comprobante (opcional)" name="receiptNumber" />
+        </SimpleForm>
+      </AdminActionDialog>
+    );
+  }
+
+  if (dialog.kind === "settlement") {
+    return (
+      <AdminActionDialog
+        title={`Abrir rendición de ${detail.cycle.title}`}
+        copy="La rendición se calcula con los adelantos, gastos y combustible reconocido de toda la salida."
+        onClose={onClose}
+      >
+        <SimpleForm
+          compact
+          submitLabel="Abrir rendición"
+          title="Nueva rendición"
+          onSaved={onSaved}
+          onSubmit={async (form) => {
+            if (detail.cycle.primaryDriverId === null)
+              throw new Error("La salida necesita un conductor responsable.");
+            await gateway.createCycleSettlement({
+              id: crypto.randomUUID(),
+              cycleId: detail.cycle.id,
+              driverId: detail.cycle.primaryDriverId,
+              notes: optionalText(form, "notes"),
+            });
+          }}
+        >
+          <TextareaField label="Nota para la revisión (opcional)" name="notes" />
         </SimpleForm>
       </AdminActionDialog>
     );
@@ -4399,7 +4738,7 @@ function StaffFuelForm({
             supplierId: optionalText(form, "supplierId"),
             fueledAt: dateTimeValue(form, "fueledAt"),
             location: optionalText(form, "location"),
-            odometerKm: numberValue(form, "odometerKm"),
+            odometerKm: nullableNumber(form, "odometerKm"),
             quantity: positiveNumberValue(form, "quantity"),
             volumeUnit: fuelVolumeUnitValue(form, "volumeUnit"),
             unitPrice: numberValue(form, "unitPrice"),
@@ -4462,7 +4801,6 @@ function StaffFuelForm({
         name="odometerKm"
         step="0.01"
         type="number"
-        required
       />
       <Field label="Cantidad" min="0.001" name="quantity" step="0.001" type="number" required />
       <SelectField
@@ -4715,7 +5053,11 @@ function SettlementsPage({
             actions={
               canMutate
                 ? (row) =>
-                    row.description.includes("Copia local") ? null : row.status
+                    row.settlementScope === "cycle" ? (
+                      <Link className="admin-text-link" to={settlementDetailPath(row.id)}>
+                        Revisar cuenta
+                      </Link>
+                    ) : row.description.includes("Copia local") ? null : row.status
                         .toLowerCase()
                         .includes("closed") || row.status.toLowerCase().includes("cerrad") ? (
                       role === "management" ? (
@@ -4755,7 +5097,14 @@ function SettlementsPage({
               title={`Cerrar ${selected.row.title}`}
               submitLabel="Conciliar y cerrar rendición"
               onSubmit={async (form) =>
-                gateway.closeSettlement(settlementCloseInput(selected.row, form))
+                selected.row.settlementScope === "cycle"
+                  ? gateway.closeCycleSettlement({
+                      settlementId: selected.row.id,
+                      resolutionMethod: optionalText(form, "resolutionMethod"),
+                      resolutionReference: optionalText(form, "resolutionReference"),
+                      resolutionNote: optionalText(form, "resolutionNote"),
+                    })
+                  : gateway.closeSettlement(settlementCloseInput(selected.row, form))
               }
               onSaved={() => {
                 setSelected(null);
@@ -4786,10 +5135,15 @@ function SettlementsPage({
               title={`Reabrir ${selected.row.title}`}
               submitLabel="Reabrir rendición"
               onSubmit={async (form) =>
-                gateway.reopenSettlement({
-                  settlementId: selected.row.id,
-                  reason: textValue(form, "reason"),
-                })
+                selected.row.settlementScope === "cycle"
+                  ? gateway.reopenCycleSettlement({
+                      settlementId: selected.row.id,
+                      reason: textValue(form, "reason"),
+                    })
+                  : gateway.reopenSettlement({
+                      settlementId: selected.row.id,
+                      reason: textValue(form, "reason"),
+                    })
               }
               onSaved={() => {
                 setSelected(null);
@@ -6068,6 +6422,7 @@ function CollectionsPage({
   readonly canMutate: boolean;
   readonly search: string;
 }): React.JSX.Element {
+  const paymentRequest = useRef(crypto.randomUUID());
   const loader = useCallback(() => gateway.listInvoices(), [gateway]);
   const resource = useResource(loader);
   const optionsLoader = useCallback(
@@ -6141,7 +6496,7 @@ function CollectionsPage({
           title="Registrar pago"
           submitLabel="Guardar pago"
           onSubmit={async (form) => {
-            const paymentId = crypto.randomUUID();
+            const paymentId = paymentRequest.current;
             await gateway.registerPayment(context, {
               invoiceId: textValue(form, "invoiceId"),
               paidAt: dateTimeValue(form, "paidAt"),
@@ -6151,6 +6506,7 @@ function CollectionsPage({
               paymentId,
               idempotencyKey: paymentId,
             });
+            paymentRequest.current = crypto.randomUUID();
           }}
           onSaved={resource.reload}
         >
@@ -6168,26 +6524,29 @@ function CollectionsPage({
       </div>
     );
   return (
-    <ResourceCrudPage
-      title="Cobranza"
-      description={pageCopy.collections?.description ?? ""}
-      resource={resource}
-      emptyCopy="No existen facturas registradas."
-      form={
-        canMutate && form !== null ? (
-          <AdminFormDisclosure
-            label="Registrar movimiento de cobranza"
-            copy="Emite una factura o aplica un pago solo cuando tengas la referencia confirmada."
-          >
-            {form}
-          </AdminFormDisclosure>
-        ) : canMutate ? null : (
-          <ReadOnlyNotice />
-        )
-      }
-      listLabel="Facturas y saldos"
-      tableKind="finance"
-    />
+    <>
+      <ResourceCrudPage
+        title="Cobranza"
+        description={pageCopy.collections?.description ?? ""}
+        resource={resource}
+        emptyCopy="No existen facturas registradas."
+        form={
+          canMutate && form !== null ? (
+            <AdminFormDisclosure
+              label="Registrar movimiento de cobranza"
+              copy="Emite una factura o aplica un pago solo cuando tengas la referencia confirmada."
+            >
+              {form}
+            </AdminFormDisclosure>
+          ) : canMutate ? null : (
+            <ReadOnlyNotice />
+          )
+        }
+        listLabel="Facturas y saldos"
+        tableKind="finance"
+      />
+      {canMutate && <CommercialCorrections onSaved={resource.reload} />}
+    </>
   );
 }
 
@@ -7239,11 +7598,13 @@ function SettlementDetailPage({
   settlementId,
   gateway,
   canMutate,
+  context,
   role,
 }: {
   readonly settlementId: string | null;
   readonly gateway: AdminDataGateway;
   readonly canMutate: boolean;
+  readonly context: AdminWriteContext;
   readonly role: AppRole;
 }): React.JSX.Element {
   const loader = useCallback(async (): Promise<AdminSettlementDetail | null> => {
@@ -7251,138 +7612,238 @@ function SettlementDetailPage({
     return gateway.loadSettlementDetail(settlementId);
   }, [gateway, settlementId]);
   const resource = useResource(loader);
-  const [operation, setOperation] = useState<"close" | "reopen" | null>(null);
+  const [operation, setOperation] = useState<"close" | "reopen" | "evidence" | null>(null);
   return (
     <>
       <PageHeader
         title="Rendición"
-        description="Adelantos, gastos, saldo y cierre auditado del viaje."
+        description="Adelantos, gastos, combustible, saldo y cierre auditado de la salida o viaje."
       />
       <PageState
         resource={resource}
         emptyCopy="No se encontró la rendición solicitada o no tienes acceso."
       >
-        {(detail) => (
-          <div className="admin-master-detail">
-            <section className="admin-card admin-detail-card">
-              <div className="admin-card__heading">
-                <div>
-                  <p className="admin-section-kicker">Rendición de viaje</p>
-                  <h2>{detail.settlement.title}</h2>
-                  <p className="admin-muted">{detail.settlement.description}</p>
-                  {detail.settlement.technicalReference === undefined ? null : (
-                    <p className="technical-value">{detail.settlement.technicalReference}</p>
-                  )}
-                </div>
-                <StatusChip
-                  label={labelStatusForUi(detail.settlement.status)}
-                  tone={toneForStatus(detail.settlement.status)}
-                />
-              </div>
-              <dl>
-                <DetailTerm label="Adelantos" value={formatMoney(detail.totalAdvances)} />
-                <DetailTerm label="Gastos" value={formatMoney(detail.totalExpenses)} />
-                <DetailTerm
-                  label={settlementDirectionCopy(detail.balance)}
-                  value={formatMoney(Math.abs(detail.balance))}
-                />
-                <DetailTerm label="Conductor" value={detail.driverName ?? "No registrado"} />
-                <DetailTerm label="Fecha" value={formatDate(detail.settlement.date)} />
-              </dl>
-              <div className="admin-vehicle-actions">
-                {detail.trip === null ? null : (
-                  <Link className="admin-text-link" to={tripSummaryPath(detail.trip.id)}>
-                    Ver viaje <Icon name="chevron" size={16} />
-                  </Link>
-                )}
-                {detail.trip === null ? null : (
-                  <Link
-                    className="admin-text-link"
-                    to={`${routePaths.expenses}?viaje=${encodeURIComponent(detail.trip.id)}`}
-                  >
-                    Revisar gastos <Icon name="chevron" size={16} />
-                  </Link>
-                )}
-                {canMutate && detail.canClose ? (
-                  <Button onClick={() => setOperation("close")}>
-                    Conciliar y cerrar rendición
-                  </Button>
-                ) : null}
-                {canMutate &&
-                role === "management" &&
-                isClosedSettlement(detail.settlement.status) ? (
-                  <Button onClick={() => setOperation("reopen")} variant="quiet">
-                    Reabrir con motivo
-                  </Button>
-                ) : null}
-              </div>
-              {detail.blockingExpenses.length === 0 ? null : (
-                <p className="admin-readonly" role="note">
-                  Hay {detail.blockingExpenses.length} gasto(s) pendiente(s) u observado(s).
-                  Revísalos antes de cerrar.
-                </p>
-              )}
-            </section>
-            <VehicleDetailSection
-              title="Adelantos"
-              emptyCopy="No hay adelantos asociados."
-              rows={detail.advances}
-            />
-            <VehicleDetailSection
-              title="Gastos"
-              emptyCopy="No hay gastos asociados."
-              rows={detail.expenses}
-              action={
-                detail.trip === null
-                  ? undefined
-                  : () => (
-                      <Link
-                        className="admin-text-link"
-                        to={`${routePaths.expenses}?viaje=${encodeURIComponent(detail.trip!.id)}`}
-                      >
-                        Revisar gasto <Icon name="chevron" size={16} />
-                      </Link>
-                    )
-              }
-            />
-            {operation === null ? null : (
-              <AdminActionDialog
-                title={operation === "close" ? "Conciliar y cerrar rendición" : "Reabrir rendición"}
-                copy={detail.settlement.title}
-                onClose={() => setOperation(null)}
-              >
-                {operation === "close" ? (
-                  <SettlementCloseForm
-                    detail={detail}
-                    gateway={gateway}
-                    onSaved={() => {
-                      setOperation(null);
-                      resource.reload();
-                    }}
+        {(detail) =>
+          detail.cycle !== null ? (
+            <CycleRendition cycleId={detail.cycle.id} />
+          ) : (
+            <div className="admin-master-detail">
+              <section className="admin-card admin-detail-card">
+                <div className="admin-card__heading">
+                  <div>
+                    <p className="admin-section-kicker">
+                      {detail.cycle === null
+                        ? "Rendición de viaje"
+                        : "Rendición de salida Cusco–Cusco"}
+                    </p>
+                    <h2>{detail.settlement.title}</h2>
+                    <p className="admin-muted">{detail.settlement.description}</p>
+                    {detail.settlement.technicalReference === undefined ? null : (
+                      <p className="technical-value">{detail.settlement.technicalReference}</p>
+                    )}
+                  </div>
+                  <StatusChip
+                    label={labelStatusForUi(detail.settlement.status)}
+                    tone={toneForStatus(detail.settlement.status)}
                   />
-                ) : (
-                  <SimpleForm
-                    compact
-                    title="Reabrir rendición"
-                    submitLabel="Reabrir rendición"
-                    onSubmit={(form) =>
-                      gateway.reopenSettlement({
-                        settlementId: detail.settlement.id,
-                        reason: textValue(form, "reason"),
-                      })
-                    }
-                    onSaved={() => {
-                      setOperation(null);
-                      resource.reload();
-                    }}
-                  >
-                    <TextareaField label="Motivo auditado" name="reason" required />
-                  </SimpleForm>
+                </div>
+                <dl>
+                  <DetailTerm label="Adelantos" value={formatMoney(detail.totalAdvances)} />
+                  <DetailTerm label="Gastos" value={formatMoney(detail.totalExpenses)} />
+                  <DetailTerm
+                    label={settlementDirectionCopy(detail.balance)}
+                    value={formatMoney(Math.abs(detail.balance))}
+                  />
+                  <DetailTerm label="Conductor" value={detail.driverName ?? "No registrado"} />
+                  <DetailTerm label="Fecha" value={formatDate(detail.settlement.date)} />
+                </dl>
+                <div className="admin-vehicle-actions">
+                  {detail.trip === null ? null : (
+                    <Link className="admin-text-link" to={tripSummaryPath(detail.trip.id)}>
+                      Ver viaje <Icon name="chevron" size={16} />
+                    </Link>
+                  )}
+                  {detail.cycle === null ? null : (
+                    <Link className="admin-text-link" to={routePaths.operationalCycles}>
+                      Ver salidas <Icon name="chevron" size={16} />
+                    </Link>
+                  )}
+                  {detail.trip === null ? null : (
+                    <Link
+                      className="admin-text-link"
+                      to={`${routePaths.expenses}?viaje=${encodeURIComponent(detail.trip.id)}`}
+                    >
+                      Revisar gastos <Icon name="chevron" size={16} />
+                    </Link>
+                  )}
+                  {canMutate && detail.canClose ? (
+                    <Button onClick={() => setOperation("close")}>
+                      Conciliar y cerrar rendición
+                    </Button>
+                  ) : null}
+                  {canMutate ? (
+                    <Button variant="quiet" onClick={() => setOperation("evidence")}>
+                      Adjuntar hoja o foto
+                    </Button>
+                  ) : null}
+                  {canMutate &&
+                  role === "management" &&
+                  isClosedSettlement(detail.settlement.status) ? (
+                    <Button onClick={() => setOperation("reopen")} variant="quiet">
+                      Reabrir con motivo
+                    </Button>
+                  ) : null}
+                </div>
+                {detail.blockingExpenses.length === 0 ? null : (
+                  <p className="admin-readonly" role="note">
+                    Hay {detail.blockingExpenses.length} gasto(s) pendiente(s) u observado(s).
+                    Revísalos antes de cerrar.
+                  </p>
                 )}
-              </AdminActionDialog>
-            )}
-          </div>
-        )}
+              </section>
+              <VehicleDetailSection
+                title="Adelantos"
+                emptyCopy="No hay adelantos asociados."
+                rows={detail.advances}
+              />
+              <VehicleDetailSection
+                title="Gastos"
+                emptyCopy="No hay gastos asociados."
+                rows={detail.expenses}
+                action={
+                  detail.trip === null
+                    ? undefined
+                    : () => (
+                        <Link
+                          className="admin-text-link"
+                          to={`${routePaths.expenses}?viaje=${encodeURIComponent(detail.trip!.id)}`}
+                        >
+                          Revisar gasto <Icon name="chevron" size={16} />
+                        </Link>
+                      )
+                }
+              />
+              <VehicleDetailSection
+                title="Combustible"
+                emptyCopy="No hay combustible asociado a esta salida."
+                rows={detail.fuelEntries}
+              />
+              <VehicleDetailSection
+                title="Hojas y fotos de rendición"
+                emptyCopy="Aún no hay fotografías o PDF adjuntos."
+                rows={detail.evidence}
+                action={(row) =>
+                  row.fileId === undefined ? null : (
+                    <PrivateEvidenceAction
+                      fileId={row.fileId}
+                      gateway={gateway}
+                      label="Ver adjunto"
+                      online
+                    />
+                  )
+                }
+              />
+              {operation === null ? null : (
+                <AdminActionDialog
+                  title={
+                    operation === "close"
+                      ? "Conciliar y cerrar rendición"
+                      : operation === "reopen"
+                        ? "Reabrir rendición"
+                        : "Adjuntar hoja o foto"
+                  }
+                  copy={detail.settlement.title}
+                  onClose={() => setOperation(null)}
+                >
+                  {operation === "close" ? (
+                    <SettlementCloseForm
+                      detail={detail}
+                      gateway={gateway}
+                      onSaved={() => {
+                        setOperation(null);
+                        resource.reload();
+                      }}
+                    />
+                  ) : operation === "reopen" ? (
+                    <SimpleForm
+                      compact
+                      title="Reabrir rendición"
+                      submitLabel="Reabrir rendición"
+                      onSubmit={(form) =>
+                        detail.cycle === null
+                          ? gateway.reopenSettlement({
+                              settlementId: detail.settlement.id,
+                              reason: textValue(form, "reason"),
+                            })
+                          : gateway.reopenCycleSettlement({
+                              settlementId: detail.settlement.id,
+                              reason: textValue(form, "reason"),
+                            })
+                      }
+                      onSaved={() => {
+                        setOperation(null);
+                        resource.reload();
+                      }}
+                    >
+                      <TextareaField label="Motivo auditado" name="reason" required />
+                    </SimpleForm>
+                  ) : (
+                    <SimpleForm
+                      compact
+                      title="Evidencia de la rendición"
+                      submitLabel="Adjuntar evidencia"
+                      onSubmit={async (form) => {
+                        const file = fileValue(form, "file");
+                        if (file === null) throw new Error("Adjunta una fotografía o PDF.");
+                        await gateway.addSettlementEvidence(context, {
+                          id: crypto.randomUUID(),
+                          settlementId: detail.settlement.id,
+                          evidenceKind:
+                            textValue(form, "evidenceKind") === "fuel_sheet"
+                              ? "fuel_sheet"
+                              : textValue(form, "evidenceKind") === "other"
+                                ? "other"
+                                : "expense_sheet",
+                          caption: optionalText(form, "caption"),
+                          capturedAt: dateTimeValue(form, "capturedAt"),
+                          file,
+                        });
+                      }}
+                      onSaved={() => {
+                        setOperation(null);
+                        resource.reload();
+                      }}
+                    >
+                      <SelectField
+                        label="Tipo de hoja"
+                        name="evidenceKind"
+                        options={[
+                          { id: "expense_sheet", label: "Gastos y viáticos", status: "" },
+                          { id: "fuel_sheet", label: "Combustible", status: "" },
+                          { id: "other", label: "Otro respaldo", status: "" },
+                        ]}
+                        required
+                      />
+                      <Field
+                        defaultValue={localDateTimeInputValue()}
+                        label="Fecha y hora de captura"
+                        name="capturedAt"
+                        type="datetime-local"
+                        required
+                      />
+                      <Field label="Descripción (opcional)" name="caption" />
+                      <FileField label="Fotografía o PDF" name="file" required />
+                      <p className="admin-form-note">
+                        Se almacena en Storage privado y queda disponible para revisar la hoja sin
+                        OCR. Puedes repetir esta acción para adjuntar varias páginas.
+                      </p>
+                    </SimpleForm>
+                  )}
+                </AdminActionDialog>
+              )}
+            </div>
+          )
+        }
       </PageState>
     </>
   );
@@ -7403,7 +7864,16 @@ function SettlementCloseForm({
       compact
       title="Confirmar cierre"
       submitLabel="Conciliar y cerrar rendición"
-      onSubmit={(form) => gateway.closeSettlement(settlementCloseInput(detail.settlement, form))}
+      onSubmit={(form) =>
+        detail.cycle === null
+          ? gateway.closeSettlement(settlementCloseInput(detail.settlement, form))
+          : gateway.closeCycleSettlement({
+              settlementId: detail.settlement.id,
+              resolutionMethod: optionalText(form, "resolutionMethod"),
+              resolutionReference: optionalText(form, "resolutionReference"),
+              resolutionNote: optionalText(form, "resolutionNote"),
+            })
+      }
       onSaved={onSaved}
     >
       {isZero ? (
@@ -8779,6 +9249,33 @@ function SimpleForm({
   readonly children: ReactNode;
   readonly compact?: boolean;
 }): React.JSX.Element {
+  const { quick } = useOperationMode();
+  const formChildren = Children.toArray(children);
+  const optionalFields = formChildren.filter(
+    (child) =>
+      isValidElement<{ name?: string; required?: boolean }>(child) &&
+      [Field, TextareaField, SelectField].some((field) => child.type === field) &&
+      child.props.required !== true &&
+      child.props.name !== undefined &&
+      [
+        "notes",
+        "pickupLocation",
+        "supplierId",
+        "receiptType",
+        "receiptNumber",
+        "phone",
+        "address",
+        "ownerName",
+        "capacityTons",
+        "modelYear",
+        "odometerKm",
+        "reason",
+        "actionTaken",
+        "estimatedCost",
+        "concept",
+      ].includes(child.props.name),
+  );
+  const primaryFields = formChildren.filter((child) => !optionalFields.includes(child));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -8807,9 +9304,12 @@ function SimpleForm({
     >
       <div className="admin-form__heading">
         <h2>{title}</h2>
-        <p>{description}</p>
+        {!quick && <p>{description}</p>}
       </div>
-      <div className="admin-form__fields">{children}</div>
+      <div className="admin-form__fields">
+        {primaryFields}
+        {optionalFields.length > 0 && <MoreDetails>{optionalFields}</MoreDetails>}
+      </div>
       <Feedback message={message} error={error} />
       <div className="admin-form__actions">
         <Button disabled={busy} type="submit">
@@ -9159,8 +9659,8 @@ function optionalText(form: FormData, name: string): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
-function staffRepresentationReason(form: FormData): string {
-  return optionalText(form, "reason") ?? "Sin respaldo adicional declarado.";
+function staffRepresentationReason(form: FormData): string | null {
+  return optionalText(form, "reason");
 }
 
 function requiredUpdatedAt(row: Pick<AdminListRow, "updatedAt">): string {

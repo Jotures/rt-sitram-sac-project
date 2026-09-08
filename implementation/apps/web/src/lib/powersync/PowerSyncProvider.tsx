@@ -5,6 +5,8 @@ import { powerSyncConfiguration } from "./config";
 import { powerSyncDatabase } from "./database";
 import { shouldManagePowerSyncLifecycle } from "./lifecycle-activation";
 import { powerSyncLifecycle } from "./lifecycle";
+import { restoreOperationJournal } from "./operation-journal";
+import { powerSyncIdentityStore } from "./identity-store";
 
 interface PowerSyncRuntimeState {
   readonly configured: boolean;
@@ -33,11 +35,27 @@ export function PowerSyncProvider({ children }: PropsWithChildren): React.JSX.El
 
     let current = true;
 
+    // A previously prepared identity can use SQLite while the network reconnects.
+    // New identities still wait for lifecycle cleanup before becoming writable.
+    void powerSyncDatabase
+      .init()
+      .then(() => {
+        if (
+          current &&
+          authState.session !== null &&
+          powerSyncIdentityStore.read() === authState.session.user.id
+        ) {
+          setRuntime((state) => ({ ...state, sqliteReady: true }));
+        }
+      })
+      .catch(() => undefined);
+
     void powerSyncLifecycle
       .transitionToSession(authState.session)
-      .then(() => {
+      .then(async () => {
+        await restoreOperationJournal(powerSyncDatabase);
         if (current) {
-          setRuntime((state) => ({ ...state, sqliteReady: powerSyncDatabase.ready, error: null }));
+          setRuntime((state) => ({ ...state, sqliteReady: true, error: null }));
         }
       })
       .catch((error: unknown) => {

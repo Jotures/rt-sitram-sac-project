@@ -52,3 +52,7 @@ export function deriveFuelUnitPrice(quantity: number, total: number): number {
 
   return Math.round((total / quantity) * 10_000) / 10_000;
 }
+
+export function parseOptionalMileage(value: string, label: string): number | null {
+  return value.trim() === "" ? null : parseNonNegativeNumber(value, label);
+}

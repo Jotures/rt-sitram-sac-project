@@ -1,11 +1,12 @@
 import { useStatus } from "@powersync/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { BrandLockup, BrandMark, BrandRouteMotif } from "../../components/brand/BrandLockup";
 import { Icon, type IconName } from "../../components/primitives/Icon";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { DriverAttachmentWorker } from "../../features/driver-ui";
 import { useIdentity } from "../../features/identity/IdentityProvider";
+import { useOperationMode } from "../../features/operation-mode/OperationModeProvider";
 import type { AppRole } from "../../features/identity/identity-model";
 import type { NetworkStatus } from "../../lib/network/connectivity";
 import { useNetworkStatus } from "../../lib/network/use-network-status";
@@ -58,6 +59,30 @@ const navigationIcons: Partial<Readonly<Record<ProductRouteId, IconName>>> = {
 
 function NavigationIcon({ routeId }: { readonly routeId: ProductRouteId }): React.JSX.Element {
   return <Icon name={navigationIcons[routeId] ?? "chevron"} size={19} />;
+}
+
+function SidebarGroup({
+  label,
+  collapsed,
+  children,
+}: {
+  readonly label: string;
+  readonly collapsed: boolean;
+  readonly children: ReactNode;
+}): React.JSX.Element {
+  if (collapsed)
+    return (
+      <details className="sidebar__group sidebar__more">
+        <summary>{label}</summary>
+        {children}
+      </details>
+    );
+  return (
+    <div className="sidebar__group">
+      {label && <p>{label}</p>}
+      {children}
+    </div>
+  );
 }
 
 type ShellSyncTone = "ready" | "updating" | "pending" | "offline" | "error";
@@ -184,6 +209,7 @@ export function getOfflineBannerPresentation({
 }
 
 export function ProductShell(): React.JSX.Element {
+  const { mode, quick } = useOperationMode();
   const { state: identityState } = useIdentity();
   const { signOut } = useAuth();
   const networkStatus = useNetworkStatus();
@@ -246,8 +272,8 @@ export function ProductShell(): React.JSX.Element {
   }
 
   const { company, profile } = identityState.identity;
-  const desktopNavigation = getDesktopNavigation(profile.role);
-  const mobileNavigation = getMobileNavigation(profile.role);
+  const desktopNavigation = getDesktopNavigation(profile.role, mode);
+  const mobileNavigation = getMobileNavigation(profile.role, mode);
   const companyName = company.tradeName ?? company.legalName;
   const currentNavigationItem = desktopNavigation
     .flatMap((group) => group.items)
@@ -291,8 +317,10 @@ export function ProductShell(): React.JSX.Element {
 
   return (
     <>
-      {profile.role === "driver" ? <DriverAttachmentWorker /> : null}
-      <div className="app-shell">
+      {["driver", "management", "administration"].includes(profile.role) ? (
+        <DriverAttachmentWorker />
+      ) : null}
+      <div className="app-shell" data-operation-mode={mode}>
         <a className="skip-link" href="#main-content">
           Saltar al contenido
         </a>
@@ -323,8 +351,11 @@ export function ProductShell(): React.JSX.Element {
 
           <nav className="sidebar__navigation" aria-label="Navegación principal">
             {desktopNavigation.map((group, groupIndex) => (
-              <div className="sidebar__group" key={`${group.label}-${groupIndex}`}>
-                {group.label.length === 0 ? null : <p>{group.label}</p>}
+              <SidebarGroup
+                label={group.label}
+                collapsed={quick && groupIndex > 0}
+                key={`${mode}-${group.label}-${groupIndex}`}
+              >
                 {group.items.map((item) => (
                   <NavLink
                     aria-describedby={`sidebar-navigation-${item.id}-description`}
@@ -344,7 +375,7 @@ export function ProductShell(): React.JSX.Element {
                     </span>
                   </NavLink>
                 ))}
-              </div>
+              </SidebarGroup>
             ))}
           </nav>
 
@@ -397,6 +428,13 @@ export function ProductShell(): React.JSX.Element {
                 {currentPageLabel}
               </strong>
             </div>
+            <Link
+              className="operation-mode-link"
+              to="/perfil"
+              aria-label="Cambiar la forma de trabajar en Mi perfil"
+            >
+              {quick ? "Modo rápido" : "Vista completa"}
+            </Link>
             <div
               aria-atomic="true"
               aria-label={`Estado de datos: ${syncPresentation.label}. ${syncPresentation.detail}.`}

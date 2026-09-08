@@ -22,6 +22,45 @@ streams:
   staff_company_data:
     auto_subscribe: true
     queries:
+      - SELECT id, company_id, cycle_id, lines, baseline, status, version, updated_by, updated_at
+        FROM cycle_rendition_summaries
+        WHERE company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true
+          AND (role = 'management' OR role = 'administration') AND company_id IN (SELECT id FROM companies WHERE active = true))
+      - SELECT id, company_id, settlement_id, direction, amount, method, reference, occurred_at, actor_id, cancelled_at, cancellation_reason, created_at
+        FROM cycle_balance_payments
+        WHERE company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true
+          AND (role = 'management' OR role = 'administration') AND company_id IN (SELECT id FROM companies WHERE active = true))
+      - SELECT id, company_id, settlement_id, file_id, evidence_kind, caption, captured_at, uploaded_by, created_at
+        FROM settlement_evidence
+        WHERE company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true
+          AND (role = 'management' OR role = 'administration') AND company_id IN (SELECT id FROM companies WHERE active = true))
+      - SELECT id, company_id, actor_id, kind, payload, contract_version, dependency_id,
+          source_device_id, status, result_id, created_at, confirmed_at
+        FROM operation_commands
+        WHERE company_id IN (
+          SELECT company_id FROM profiles
+          WHERE id = auth.user_id() AND active = true
+            AND (role = 'management' OR role = 'administration')
+            AND company_id IN (SELECT id FROM companies WHERE active = true)
+        )
+      - SELECT id, company_id, code, vehicle_id, primary_driver_id, status, return_status,
+          started_at, ended_at, scheduled_at, returned_at, capture_channel, notes, version, idempotency_key, created_at, updated_at
+        FROM operational_cycles
+        WHERE company_id IN (
+          SELECT company_id FROM profiles
+          WHERE id = auth.user_id() AND active = true
+            AND (role = 'management' OR role = 'administration')
+            AND company_id IN (SELECT id FROM companies WHERE active = true)
+        )
+      - SELECT id, company_id, is_test, cycle_id, trip_id, driver_id, delivered_at, amount, currency,
+          delivery_method, concept, status, idempotency_key, created_at
+        FROM advances
+        WHERE company_id IN (
+          SELECT company_id FROM profiles
+          WHERE id = auth.user_id() AND active = true
+            AND (role = 'management' OR role = 'administration')
+            AND company_id IN (SELECT id FROM companies WHERE active = true)
+        )
       - SELECT id, company_id, display_name, role, active, created_at, updated_at
         FROM profiles
         WHERE company_id IN (
@@ -74,7 +113,7 @@ streams:
             AND (role = 'management' OR role = 'administration')
             AND company_id IN (SELECT id FROM companies WHERE active = true)
         )
-      - SELECT id, company_id, code, cycle_id, client_id, vehicle_id, driver_id, route_id,
+      - SELECT id, company_id, is_test, code, cycle_id, client_id, vehicle_id, driver_id, route_id,
           origin, pickup_location, destination, scheduled_at, started_at, operational_finished_at,
           capture_mode, capture_mode_changed_at,
           operational_status, administrative_status, financial_status,
@@ -105,8 +144,8 @@ streams:
             AND (role = 'management' OR role = 'administration')
             AND company_id IN (SELECT id FROM companies WHERE active = true)
         )
-      - SELECT id, trip_id, vehicle_id, supplier_id, fueled_at, location, odometer_km,
-          quantity, volume_unit, unit_price, total_amount, currency, payment_method,
+      - SELECT id, company_id, cycle_id, trip_id, driver_id, vehicle_id, supplier_id, fueled_at, location, odometer_km,
+          quantity, volume_unit, unit_price, total_amount, currency, payment_source, validation_status, approved_amount, payment_method,
           receipt_type, receipt_number, source_device_id, idempotency_key, created_at, updated_at
         FROM fuel_entries
         WHERE company_id IN (
@@ -115,7 +154,7 @@ streams:
             AND (role = 'management' OR role = 'administration')
             AND company_id IN (SELECT id FROM companies WHERE active = true)
         )
-      - SELECT id, assignment_type, trip_id, vehicle_id, category_id, supplier_id,
+      - SELECT id, company_id, cycle_id, driver_id, validation_status, approved_amount, assignment_type, trip_id, vehicle_id, category_id, supplier_id,
           incurred_at, amount, currency, receipt_type, receipt_number, description,
           source, source_device_id, idempotency_key, created_at, updated_at
         FROM expenses
@@ -134,7 +173,7 @@ streams:
             AND (role = 'management' OR role = 'administration')
             AND company_id IN (SELECT id FROM companies WHERE active = true)
         )
-      - SELECT id, company_id, trip_id, driver_id, started_at, submitted_at, approved_at,
+      - SELECT id, company_id, cycle_id, trip_id, driver_id, started_at, submitted_at, approved_at,
           closed_at, total_advances, total_expenses, balance, status, notes, approved_by,
           version, resolution_method, resolution_reference, resolution_note,
           resolution_direction, resolved_amount, resolved_by, resolved_at, created_at, updated_at
@@ -149,6 +188,16 @@ streams:
   driver_assigned_data:
     auto_subscribe: true
     queries:
+      - SELECT id, company_id, code, vehicle_id, primary_driver_id, status, return_status, started_at, ended_at, scheduled_at, returned_at, capture_channel, notes, version, created_at, updated_at
+        FROM operational_cycles
+        WHERE primary_driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)
+          AND company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true AND role = 'driver'
+            AND company_id IN (SELECT id FROM companies WHERE active = true))
+      - SELECT id, company_id, actor_id, kind, payload, contract_version, dependency_id, source_device_id, status, result_id, created_at, confirmed_at
+        FROM operation_commands WHERE actor_id = auth.user_id()
+          AND company_id IN (SELECT company_id FROM drivers WHERE profile_id = auth.user_id() AND active = true)
+          AND company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true AND role = 'driver'
+            AND company_id IN (SELECT id FROM companies WHERE active = true))
       - SELECT id, company_id, profile_id, display_name, document_type, document_number, phone,
           license_number, license_expires_on, contract_type, contract_started_on, contract_ended_on,
           usual_vehicle_id, current_status, active, notes, updated_at
@@ -162,7 +211,7 @@ streams:
                 AND company_id IN (SELECT id FROM companies WHERE active = true)
             )
         )
-      - SELECT id, company_id, code, cycle_id, client_id, vehicle_id, driver_id, route_id,
+      - SELECT id, company_id, is_test, code, cycle_id, client_id, vehicle_id, driver_id, route_id,
           origin, pickup_location, destination, scheduled_at, started_at, operational_finished_at,
           capture_mode, capture_mode_changed_at,
           operational_status, administrative_status, financial_status,
@@ -194,12 +243,8 @@ streams:
                 AND company_id IN (SELECT id FROM companies WHERE active = true)
             )
         )
-          AND id IN (
-            SELECT vehicle_id FROM trips
-            WHERE driver_id IN (
-              SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true
-            )
-          )
+          AND (id IN (SELECT vehicle_id FROM trips WHERE driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true))
+            OR id IN (SELECT vehicle_id FROM operational_cycles WHERE primary_driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)))
       - SELECT id, trip_id, requested_action, odometer_km, cargo_delivered,
           occurred_at, source_device_id, created_at
         FROM trip_transition_requests
@@ -297,8 +342,8 @@ streams:
               SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true
             )
           )
-      - SELECT id, trip_id, vehicle_id, supplier_id, fueled_at, location, odometer_km,
-          quantity, volume_unit, unit_price, total_amount, currency, payment_method,
+      - SELECT id, company_id, cycle_id, trip_id, driver_id, vehicle_id, supplier_id, fueled_at, location, odometer_km,
+          quantity, volume_unit, unit_price, total_amount, currency, payment_source, validation_status, approved_amount, payment_method,
           receipt_type, receipt_number, source_device_id, idempotency_key, created_at, updated_at
         FROM fuel_entries
         WHERE company_id IN (
@@ -310,13 +355,8 @@ streams:
                 AND company_id IN (SELECT id FROM companies WHERE active = true)
             )
         )
-          AND trip_id IN (
-            SELECT id FROM trips
-            WHERE driver_id IN (
-              SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true
-            )
-          )
-      - SELECT id, assignment_type, trip_id, vehicle_id, category_id, supplier_id,
+          AND driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)
+      - SELECT id, company_id, cycle_id, driver_id, validation_status, approved_amount, assignment_type, trip_id, vehicle_id, category_id, supplier_id,
           incurred_at, amount, currency, receipt_type, receipt_number, description,
           source, source_device_id, idempotency_key, created_at, updated_at
         FROM expenses
@@ -329,12 +369,7 @@ streams:
                 AND company_id IN (SELECT id FROM companies WHERE active = true)
             )
         )
-          AND trip_id IN (
-            SELECT id FROM trips
-            WHERE driver_id IN (
-              SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true
-            )
-          )
+          AND driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)
       - SELECT id, trip_id, vehicle_id, occurred_at, location, incident_type, severity,
           description, action_taken, source_device_id, idempotency_key, created_at, updated_at
         FROM incidents
@@ -353,3 +388,13 @@ streams:
               SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true
             )
           )
+      - SELECT id, company_id, is_test, cycle_id, trip_id, driver_id, delivered_at, amount, currency, concept, delivery_method, status, idempotency_key, created_at
+        FROM advances
+        WHERE driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)
+          AND company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true AND role = 'driver'
+            AND company_id IN (SELECT id FROM companies WHERE active = true))
+      - SELECT id, company_id, cycle_id, trip_id, driver_id, started_at, submitted_at, approved_at, closed_at, total_advances, total_expenses, balance, status, notes, version, created_at, updated_at
+        FROM settlements
+        WHERE driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)
+          AND company_id IN (SELECT company_id FROM profiles WHERE id = auth.user_id() AND active = true AND role = 'driver'
+            AND company_id IN (SELECT id FROM companies WHERE active = true))

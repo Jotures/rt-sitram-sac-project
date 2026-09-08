@@ -50,6 +50,29 @@ const NETWORK_MESSAGE =
   /network|failed to fetch|fetch failed|timeout|timed out|connection|offline/iu;
 
 const RETRY_COLUMNS = {
+  operational_cycles: [
+    "vehicle_id",
+    "primary_driver_id",
+    "status",
+    "started_at",
+    "notes",
+    "idempotency_key",
+    "created_at",
+    "updated_at",
+  ],
+  advances: [
+    "cycle_id",
+    "trip_id",
+    "driver_id",
+    "delivered_at",
+    "amount",
+    "currency",
+    "delivery_method",
+    "concept",
+    "source_device_id",
+    "idempotency_key",
+    "created_at",
+  ],
   odometer_entries: [
     "trip_id",
     "vehicle_id",
@@ -62,7 +85,9 @@ const RETRY_COLUMNS = {
   ],
   fuel_entries: [
     "trip_id",
+    "cycle_id",
     "vehicle_id",
+    "driver_id",
     "supplier_id",
     "fueled_at",
     "location",
@@ -72,6 +97,7 @@ const RETRY_COLUMNS = {
     "unit_price",
     "total_amount",
     "currency",
+    "payment_source",
     "payment_method",
     "receipt_type",
     "receipt_number",
@@ -83,7 +109,9 @@ const RETRY_COLUMNS = {
   expenses: [
     "assignment_type",
     "trip_id",
+    "cycle_id",
     "vehicle_id",
+    "driver_id",
     "category_id",
     "supplier_id",
     "incurred_at",
@@ -208,6 +236,8 @@ export async function recordUploadDeadLetter(
     `UPDATE upload_dead_letters
      SET error_code = ?,
          error_message = ?,
+         status = 'pending_review',
+         resolved_at = NULL,
          attempts = attempts + 1,
          last_failed_at = ?
      WHERE id = ?`,
@@ -426,6 +456,43 @@ export async function retryUploadDeadLetter(
   }
 
   const row = await pendingDeadLetter(database, id);
+  if (row.source_table === "operation_commands" && row.operation === String(UpdateType.PUT)) {
+    const payload = parsePayload(row.op_data_json);
+    mapProductUpload({
+      id: row.source_record_id,
+      op: UpdateType.PUT,
+      table: "operation_commands",
+      opData: payload,
+    });
+    if (typeof payload.dependency_id === "string") {
+      const parent = await database.getAll<{ id: string }>(
+        "SELECT id FROM upload_dead_letters WHERE source_table = 'operation_commands' AND source_record_id = ? AND status = 'pending_review' LIMIT 1",
+        [payload.dependency_id],
+      );
+      if (parent.length > 0)
+        throw new Error(
+          "Primero regulariza la salida. El movimiento conserva su vínculo y sus datos.",
+        );
+    }
+    const fields = Object.keys(payload);
+    // Insert-only PowerSync tables enqueue the same command again, preserving its server identity.
+    await database.writeTransaction(async (transaction) => {
+      await transaction.execute(
+        `INSERT INTO operation_commands (id, ${fields.map((name) => `"${name}"`).join(", ")}) VALUES (?, ${fields.map(() => "?").join(", ")})`,
+        [row.source_record_id, ...fields.map((name) => payload[name])],
+      );
+      await transaction.execute(
+        "UPDATE upload_dead_letters SET status = 'retry_queued', resolved_at = ?, resolution = 'retry', resolution_note = ?, retry_record_id = ? WHERE id = ? AND status = 'pending_review'",
+        [
+          now.toISOString(),
+          "Reintento del comando original y sus dependencias, sin cambiar su contenido.",
+          row.source_record_id,
+          id,
+        ],
+      );
+    });
+    return row.source_record_id;
+  }
   if (!isRetryTable(row.source_table) || row.operation !== String(UpdateType.PUT)) {
     throw new Error("Este tipo de mutación no puede reintentarse automáticamente.");
   }

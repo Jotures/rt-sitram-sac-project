@@ -28,7 +28,7 @@ export interface FuelEntryInput {
   readonly supplierId?: string | null;
   readonly fueledAt: string;
   readonly location?: string | null;
-  readonly odometerKm: number;
+  readonly odometerKm: number | null;
   readonly quantity: number;
   readonly volumeUnit: "gallon" | "liter";
   readonly unitPrice: number;
@@ -77,8 +77,57 @@ export interface TripLoadStateInput {
   readonly tripId: string;
   readonly vehicleId: string;
   readonly loadState: "loaded" | "empty";
-  readonly odometerKm: number;
+  readonly odometerKm: number | null;
   readonly effectiveAt?: string;
+}
+
+export interface OperationalCycleInput {
+  readonly vehicleId: string;
+  readonly primaryDriverId: string;
+  readonly status: "planned" | "active";
+  readonly startedAt?: string | null;
+  readonly notes?: string | null;
+}
+
+export interface CycleAdvanceInput {
+  readonly cycleId: string;
+  readonly driverId: string;
+  readonly deliveredAt: string;
+  readonly amount: number;
+  readonly deliveryMethod: string;
+  readonly concept?: string | null;
+}
+
+export interface CycleExpenseInput {
+  readonly cycleId: string;
+  readonly driverId: string;
+  readonly categoryId: string;
+  readonly incurredAt: string;
+  readonly amount: number;
+  readonly currency?: string;
+  readonly receiptType?: string | null;
+  readonly receiptNumber?: string | null;
+  readonly description?: string | null;
+  readonly attachment?: AttachmentMetadata;
+}
+
+export interface CycleFuelInput {
+  readonly cycleId: string;
+  readonly driverId: string;
+  readonly fueledAt: string;
+  readonly location?: string | null;
+  readonly odometerKm?: number | null;
+  readonly quantity: number;
+  readonly volumeUnit: "gallon" | "liter";
+  readonly unitPrice: number;
+  readonly totalAmount: number;
+  readonly currency?: string;
+  readonly paymentSource: "company" | "driver_fund";
+  readonly paymentMethod?: string | null;
+  readonly supplierId?: string | null;
+  readonly receiptType?: string | null;
+  readonly receiptNumber?: string | null;
+  readonly attachment?: AttachmentMetadata;
 }
 
 interface SqlExecutor {
@@ -104,7 +153,14 @@ function timestamp(context: OfflineWriteContext): string {
 }
 
 function validateBeforeInsert(
-  table: "odometer_entries" | "fuel_entries" | "expenses" | "incidents" | "trip_load_state_events",
+  table:
+    | "operational_cycles"
+    | "advances"
+    | "odometer_entries"
+    | "fuel_entries"
+    | "expenses"
+    | "incidents"
+    | "trip_load_state_events",
   id: string,
   data: Record<string, string | number | null>,
 ): void {
@@ -171,6 +227,213 @@ async function writeEntryWithAttachment(
     await executeCheckedInsert(transaction, sql, values);
     await enqueueAttachment(transaction, entityType, entityId, attachment, createdAt);
   });
+}
+
+export async function recordOperationalCycleOffline(
+  database: CommonPowerSyncDatabase,
+  input: OperationalCycleInput,
+  context: OfflineWriteContext,
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const createdAt = timestamp(context);
+  const data = {
+    vehicle_id: input.vehicleId,
+    primary_driver_id: input.primaryDriverId,
+    status: input.status,
+    started_at: input.startedAt ?? null,
+    notes: input.notes ?? null,
+    idempotency_key: id,
+    created_at: createdAt,
+    updated_at: createdAt,
+  };
+  validateBeforeInsert("operational_cycles", id, data);
+  await executeCheckedInsert(
+    database,
+    `INSERT INTO operational_cycles (
+      id, vehicle_id, primary_driver_id, status, started_at, notes,
+      idempotency_key, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      data.vehicle_id,
+      data.primary_driver_id,
+      data.status,
+      data.started_at,
+      data.notes,
+      data.idempotency_key,
+      data.created_at,
+      data.updated_at,
+    ],
+  );
+  return id;
+}
+
+export async function recordCycleAdvanceOffline(
+  database: CommonPowerSyncDatabase,
+  input: CycleAdvanceInput,
+  context: OfflineWriteContext,
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const createdAt = timestamp(context);
+  const data = {
+    cycle_id: input.cycleId,
+    driver_id: input.driverId,
+    delivered_at: input.deliveredAt,
+    amount: input.amount,
+    delivery_method: input.deliveryMethod,
+    concept: input.concept ?? null,
+    source_device_id: context.sourceDeviceId,
+    idempotency_key: id,
+    created_at: createdAt,
+  };
+  validateBeforeInsert("advances", id, data);
+  await executeCheckedInsert(
+    database,
+    `INSERT INTO advances (
+      id, cycle_id, driver_id, delivered_at, amount, currency, delivery_method,
+      concept, source_device_id, idempotency_key, created_at
+    ) VALUES (?, ?, ?, ?, ?, 'PEN', ?, ?, ?, ?, ?)`,
+    [
+      id,
+      data.cycle_id,
+      data.driver_id,
+      data.delivered_at,
+      data.amount,
+      data.delivery_method,
+      data.concept,
+      data.source_device_id,
+      data.idempotency_key,
+      data.created_at,
+    ],
+  );
+  return id;
+}
+
+export async function recordCycleExpenseOffline(
+  database: CommonPowerSyncDatabase,
+  input: CycleExpenseInput,
+  context: OfflineWriteContext,
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const createdAt = timestamp(context);
+  const data = {
+    assignment_type: "trip",
+    cycle_id: input.cycleId,
+    driver_id: input.driverId,
+    category_id: input.categoryId,
+    supplier_id: null,
+    incurred_at: input.incurredAt,
+    amount: input.amount,
+    currency: input.currency ?? "PEN",
+    receipt_type: input.receiptType ?? null,
+    receipt_number: input.receiptNumber ?? null,
+    description: input.description ?? null,
+    source: "driver_mobile",
+    source_device_id: context.sourceDeviceId,
+    idempotency_key: id,
+    created_at: createdAt,
+    updated_at: createdAt,
+  };
+  validateBeforeInsert("expenses", id, data);
+  await writeEntryWithAttachment(
+    database,
+    `INSERT INTO expenses (
+      id, assignment_type, cycle_id, driver_id, category_id, supplier_id,
+      incurred_at, amount, currency, receipt_type, receipt_number, description,
+      source, source_device_id, idempotency_key, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      data.assignment_type,
+      data.cycle_id,
+      data.driver_id,
+      data.category_id,
+      data.supplier_id,
+      data.incurred_at,
+      data.amount,
+      data.currency,
+      data.receipt_type,
+      data.receipt_number,
+      data.description,
+      data.source,
+      data.source_device_id,
+      data.idempotency_key,
+      data.created_at,
+      data.updated_at,
+    ],
+    "expense",
+    id,
+    input.attachment,
+    createdAt,
+  );
+  return id;
+}
+
+export async function recordCycleFuelOffline(
+  database: CommonPowerSyncDatabase,
+  input: CycleFuelInput,
+  context: OfflineWriteContext,
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const createdAt = timestamp(context);
+  const data = {
+    cycle_id: input.cycleId,
+    driver_id: input.driverId,
+    supplier_id: input.supplierId ?? null,
+    fueled_at: input.fueledAt,
+    location: input.location ?? null,
+    odometer_km: input.odometerKm ?? null,
+    quantity: input.quantity,
+    volume_unit: input.volumeUnit,
+    unit_price: input.unitPrice,
+    total_amount: input.totalAmount,
+    currency: input.currency ?? "PEN",
+    payment_source: input.paymentSource,
+    payment_method: input.paymentMethod ?? null,
+    receipt_type: input.receiptType ?? null,
+    receipt_number: input.receiptNumber ?? null,
+    source_device_id: context.sourceDeviceId,
+    idempotency_key: id,
+    created_at: createdAt,
+    updated_at: createdAt,
+  };
+  validateBeforeInsert("fuel_entries", id, data);
+  await writeEntryWithAttachment(
+    database,
+    `INSERT INTO fuel_entries (
+      id, cycle_id, driver_id, supplier_id, fueled_at, location, odometer_km,
+      quantity, volume_unit, unit_price, total_amount, currency, payment_source,
+      payment_method, receipt_type, receipt_number, source_device_id,
+      idempotency_key, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      data.cycle_id,
+      data.driver_id,
+      data.supplier_id,
+      data.fueled_at,
+      data.location,
+      data.odometer_km,
+      data.quantity,
+      data.volume_unit,
+      data.unit_price,
+      data.total_amount,
+      data.currency,
+      data.payment_source,
+      data.payment_method,
+      data.receipt_type,
+      data.receipt_number,
+      data.source_device_id,
+      data.idempotency_key,
+      data.created_at,
+      data.updated_at,
+    ],
+    "fuel_entry",
+    id,
+    input.attachment,
+    createdAt,
+  );
+  return id;
 }
 
 export async function recordOdometerOffline(
@@ -493,7 +756,7 @@ export async function enqueueTripStartWithLoadState(
   input: TripTransitionInput & Pick<TripLoadStateInput, "vehicleId" | "loadState">,
   context: OfflineWriteContext,
 ): Promise<{ readonly transitionId: string; readonly loadStateEventId: string }> {
-  if (input.action !== "start" || input.odometerKm === null || input.odometerKm === undefined) {
+  if (input.action !== "start") {
     throw new Error("El inicio de viaje requiere kilometraje y condición de carga.");
   }
   const transitionId = crypto.randomUUID();
@@ -514,7 +777,7 @@ export async function enqueueTripStartWithLoadState(
       tripId: input.tripId,
       vehicleId: input.vehicleId,
       loadState: input.loadState,
-      odometerKm: input.odometerKm,
+      odometerKm: input.odometerKm ?? null,
       effectiveAt: createdAt,
     },
     context,

@@ -3,6 +3,12 @@ import { UpdateType, type CrudEntry } from "@powersync/web";
 export type UploadEntry = Pick<CrudEntry, "id" | "op" | "opData" | "table">;
 
 type RpcName =
+  | "apply_rendition_command"
+  | "apply_operation_command"
+  | "create_quick_operational_cycle"
+  | "issue_cycle_advance"
+  | "record_cycle_expense"
+  | "record_cycle_fuel_entry"
   | "record_odometer_entry"
   | "record_fuel_entry"
   | "record_expense"
@@ -12,6 +18,9 @@ type RpcName =
 
 export interface ProductUploadMutation {
   readonly table:
+    | "operation_commands"
+    | "operational_cycles"
+    | "advances"
     | "odometer_entries"
     | "fuel_entries"
     | "expenses"
@@ -118,6 +127,12 @@ function nonNegativeNumber(data: Record<string, unknown>, key: string): number {
   return value;
 }
 
+function optionalNonNegativeNumber(data: Record<string, unknown>, key: string): number | null {
+  const value = data[key];
+  if (value === undefined || value === null || value === "") return null;
+  return nonNegativeNumber(data, key);
+}
+
 function timestamp(data: Record<string, unknown>, key: string): string {
   const value = requiredText(data, key, 40);
   const parsed = new Date(value);
@@ -127,6 +142,12 @@ function timestamp(data: Record<string, unknown>, key: string): string {
   }
 
   return parsed.toISOString();
+}
+
+function optionalTimestamp(data: Record<string, unknown>, key: string): string | null {
+  const value = data[key];
+  if (value === undefined || value === null || value === "") return null;
+  return timestamp(data, key);
 }
 
 function oneOf<const T extends string>(
@@ -193,6 +214,8 @@ function mapFuel(entry: UploadEntry, data: Record<string, unknown>): ProductUplo
   validateAllowedKeys(data, [
     ...COMMON_KEYS,
     "trip_id",
+    "cycle_id",
+    "driver_id",
     "vehicle_id",
     "supplier_id",
     "fueled_at",
@@ -203,6 +226,7 @@ function mapFuel(entry: UploadEntry, data: Record<string, unknown>): ProductUplo
     "unit_price",
     "total_amount",
     "currency",
+    "payment_source",
     "payment_method",
     "receipt_type",
     "receipt_number",
@@ -216,6 +240,34 @@ function mapFuel(entry: UploadEntry, data: Record<string, unknown>): ProductUplo
     throw new Error("PowerSync upload rejected: fuel total does not match quantity × unit price.");
   }
 
+  const cycleId = optionalUuid(data, "cycle_id");
+  if (cycleId !== null) {
+    return {
+      table: "fuel_entries",
+      rpc: "record_cycle_fuel_entry",
+      args: {
+        p_id: requireRecordId(entry.id),
+        p_idempotency_key: requiredUuid(data, "idempotency_key"),
+        p_cycle_id: cycleId,
+        p_driver_id: requiredUuid(data, "driver_id"),
+        p_fueled_at: timestamp(data, "fueled_at"),
+        p_location: optionalText(data, "location"),
+        p_odometer_km: optionalNonNegativeNumber(data, "odometer_km"),
+        p_quantity: quantity,
+        p_volume_unit: oneOf(data, "volume_unit", ["gallon", "liter"]),
+        p_unit_price: unitPrice,
+        p_total_amount: totalAmount,
+        p_currency: currency(data),
+        p_payment_source: oneOf(data, "payment_source", ["company", "driver_fund"]),
+        p_payment_method: optionalText(data, "payment_method", 100),
+        p_supplier_id: optionalUuid(data, "supplier_id"),
+        p_receipt_type: optionalText(data, "receipt_type", 100),
+        p_receipt_number: optionalText(data, "receipt_number", 100),
+        p_receipt_file_id: null,
+      },
+    };
+  }
+
   return {
     table: "fuel_entries",
     rpc: "record_fuel_entry",
@@ -225,7 +277,7 @@ function mapFuel(entry: UploadEntry, data: Record<string, unknown>): ProductUplo
       p_supplier_id: optionalUuid(data, "supplier_id"),
       p_fueled_at: timestamp(data, "fueled_at"),
       p_location: optionalText(data, "location"),
-      p_odometer_km: nonNegativeNumber(data, "odometer_km"),
+      p_odometer_km: optionalNonNegativeNumber(data, "odometer_km"),
       p_quantity: quantity,
       p_volume_unit: oneOf(data, "volume_unit", ["gallon", "liter"]),
       p_unit_price: unitPrice,
@@ -244,6 +296,8 @@ function mapExpense(entry: UploadEntry, data: Record<string, unknown>): ProductU
     ...COMMON_KEYS,
     "assignment_type",
     "trip_id",
+    "cycle_id",
+    "driver_id",
     "vehicle_id",
     "category_id",
     "supplier_id",
@@ -257,7 +311,29 @@ function mapExpense(entry: UploadEntry, data: Record<string, unknown>): ProductU
   ]);
 
   oneOf(data, "assignment_type", ["trip"]);
-  oneOf(data, "source", ["driver_mobile"]);
+  oneOf(data, "source", ["driver_mobile", "office_quick"]);
+
+  const cycleId = optionalUuid(data, "cycle_id");
+  if (cycleId !== null) {
+    return {
+      table: "expenses",
+      rpc: "record_cycle_expense",
+      args: {
+        p_id: requireRecordId(entry.id),
+        p_idempotency_key: requiredUuid(data, "idempotency_key"),
+        p_cycle_id: cycleId,
+        p_driver_id: requiredUuid(data, "driver_id"),
+        p_category_id: requiredUuid(data, "category_id"),
+        p_incurred_at: timestamp(data, "incurred_at"),
+        p_amount: positiveNumber(data, "amount"),
+        p_currency: currency(data),
+        p_receipt_type: optionalText(data, "receipt_type", 100),
+        p_receipt_number: optionalText(data, "receipt_number", 100),
+        p_receipt_file_id: null,
+        p_description: optionalText(data, "description", 1_000),
+      },
+    };
+  }
 
   return {
     table: "expenses",
@@ -309,6 +385,61 @@ function mapIncident(entry: UploadEntry, data: Record<string, unknown>): Product
   };
 }
 
+function mapOperationalCycle(
+  entry: UploadEntry,
+  data: Record<string, unknown>,
+): ProductUploadMutation {
+  validateAllowedKeys(data, [
+    ...COMMON_KEYS,
+    "vehicle_id",
+    "primary_driver_id",
+    "status",
+    "started_at",
+    "notes",
+  ]);
+  return {
+    table: "operational_cycles",
+    rpc: "create_quick_operational_cycle",
+    args: {
+      p_id: requireRecordId(entry.id),
+      p_idempotency_key: optionalUuid(data, "idempotency_key") ?? entry.id,
+      p_vehicle_id: requiredUuid(data, "vehicle_id"),
+      p_primary_driver_id: requiredUuid(data, "primary_driver_id"),
+      p_started_at: optionalTimestamp(data, "started_at"),
+      p_status: oneOf(data, "status", ["planned", "active"]),
+      p_notes: optionalText(data, "notes", 1_000),
+    },
+  };
+}
+
+function mapAdvance(entry: UploadEntry, data: Record<string, unknown>): ProductUploadMutation {
+  validateAllowedKeys(data, [
+    ...COMMON_KEYS,
+    "cycle_id",
+    "driver_id",
+    "delivered_at",
+    "amount",
+    "delivery_method",
+    "concept",
+    "currency",
+    "trip_id",
+  ]);
+  return {
+    table: "advances",
+    rpc: "issue_cycle_advance",
+    args: {
+      p_id: requireRecordId(entry.id),
+      p_idempotency_key: optionalUuid(data, "idempotency_key") ?? entry.id,
+      p_cycle_id: requiredUuid(data, "cycle_id"),
+      p_driver_id: requiredUuid(data, "driver_id"),
+      p_delivered_at: timestamp(data, "delivered_at"),
+      p_amount: positiveNumber(data, "amount"),
+      p_delivery_method: requiredText(data, "delivery_method", 100),
+      p_concept: optionalText(data, "concept", 500),
+    },
+  };
+}
+
 function mapTripTransition(
   entry: UploadEntry,
   data: Record<string, unknown>,
@@ -333,10 +464,10 @@ function mapTripTransition(
   if (action === "arrive" && (mileage !== null || cargoDelivered !== 0)) {
     throw new Error("PowerSync upload rejected: arrival cannot close a trip.");
   }
-  if (action === "start" && (mileage === null || cargoDelivered !== 0)) {
+  if (action === "start" && cargoDelivered !== 0) {
     throw new Error("PowerSync upload rejected: start requires mileage only.");
   }
-  if (action === "complete" && (mileage === null || cargoDelivered !== 1)) {
+  if (action === "complete" && cargoDelivered !== 1) {
     throw new Error(
       "PowerSync upload rejected: completion requires mileage and delivery confirmation.",
     );
@@ -384,7 +515,7 @@ function mapTripLoadState(
       p_trip_id: requiredUuid(data, "trip_id"),
       p_load_state: oneOf(data, "load_state", ["loaded", "empty"]),
       p_effective_at: timestamp(data, "effective_at"),
-      p_odometer_km: nonNegativeNumber(data, "odometer_km"),
+      p_odometer_km: optionalNonNegativeNumber(data, "odometer_km"),
       p_supersedes_event_id: supersedesEventId,
       p_correction_reason: correctionReason,
     },
@@ -396,6 +527,51 @@ export function mapProductUpload(entry: UploadEntry): ProductUploadMutation {
   const data = entry.opData ?? {};
 
   switch (entry.table) {
+    case "operation_commands": {
+      validateAllowedKeys(data, [
+        "company_id",
+        "actor_id",
+        "kind",
+        "payload",
+        "contract_version",
+        "dependency_id",
+        "source_device_id",
+        "status",
+        "created_at",
+      ]);
+      if (data.contract_version !== 1)
+        throw new Error("PowerSync upload rejected: unsupported operation contract version.");
+      const payload = requiredText(data, "payload", 30_000);
+      const parsed: unknown = JSON.parse(payload);
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+        throw new Error("PowerSync upload rejected: invalid operation payload.");
+      return {
+        table: "operation_commands",
+        rpc: data.kind === "rendition" ? "apply_rendition_command" : "apply_operation_command",
+        args: {
+          p_id: requireRecordId(entry.id),
+          p_kind: oneOf(data, "kind", [
+            "rendition",
+            "departure",
+            "service",
+            "advance",
+            "expense",
+            "fuel",
+            "return",
+            "start",
+            "service_complete",
+          ]),
+          p_payload: payload,
+          p_contract_version: 1,
+          p_dependency_id: optionalUuid(data, "dependency_id"),
+          p_source_device_id: optionalText(data, "source_device_id", 200),
+        },
+      };
+    }
+    case "operational_cycles":
+      return mapOperationalCycle(entry, data);
+    case "advances":
+      return mapAdvance(entry, data);
     case "odometer_entries":
       return mapOdometer(entry, data);
     case "fuel_entries":

@@ -1,5 +1,7 @@
 # Arquitectura Técnica del Sistema Digital — R&T SITRAM SAC
 
+> Actualización vigente DEC-047/048: [contrato Cusco–Cusco](planes/operacion-agil-cusco-cusco/02_contrato_de_datos.md). Sustituye la rendición exclusivamente por servicio y la captura ordinaria de oficina solo en línea. GPS y OCR se conservan archivados, fuera del desarrollo futuro autorizado. La preferencia rápida es global y personal; no cambia permisos.
+
 > **Propósito:** convertir la definición empresarial, funcional, de datos y UX/UI de R&T SITRAM SAC en una arquitectura tecnológica concreta, offline-first, segura, mantenible y preparada para crecer desde una flota inicial de tres unidades hacia una operación de mayor escala.
 
 **Empresa:** R&T SITRAM SAC  

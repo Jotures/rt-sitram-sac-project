@@ -70,6 +70,7 @@ No editar manualmente el bloque siguiente.
 - `docs/archive/`
 - `docs/audits/`
 - `docs/decisions/`
+- `docs/planes/`
 - `docs/runbooks/`
 - `docs/sessions/`
 - `evidence/`
@@ -89,6 +90,7 @@ No editar manualmente el bloque siguiente.
 - `implementation/apps/web/src/features/gps-context/`
 - `implementation/apps/web/src/features/gps-odometer-management/`
 - `implementation/apps/web/src/features/identity/`
+- `implementation/apps/web/src/features/operation-mode/`
 - `implementation/apps/web/src/features/powersync/`
 - `implementation/apps/web/src/features/reports/`
 - `implementation/apps/web/src/features/shared/`

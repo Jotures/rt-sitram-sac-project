@@ -50,10 +50,13 @@ function recoveryDatabase(seed: FailedAttachmentRow) {
     } else if (sql.includes("SET status = 'failed', last_error")) {
       state = { ...state, status: "failed", last_error: String(parameters[0]) };
     }
-    return { rowsAffected: 1 };
+    return { rowsAffected: 0 };
   });
 
-  const getAll = vi.fn(async <T>(sql: string) => {
+  const getAll = vi.fn(async <T>(sql: string, parameters: unknown[] = []) => {
+    if (sql.startsWith("SELECT id FROM attachment_queue")) {
+      return (state.id === parameters[0] && state.status === parameters[1] ? [state] : []) as T[];
+    }
     if (sql.includes("attempts < 5")) {
       return (
         state.attempts < 5 && ["pending", "failed", "uploading"].includes(state.status)
@@ -75,8 +78,8 @@ function recoveryDatabase(seed: FailedAttachmentRow) {
     execute,
     getAll,
     writeTransaction: async <T>(
-      callback: (transaction: { execute: typeof execute }) => Promise<T>,
-    ) => callback({ execute }),
+      callback: (transaction: { execute: typeof execute; getAll: typeof getAll }) => Promise<T>,
+    ) => callback({ execute, getAll }),
   };
 
   return {

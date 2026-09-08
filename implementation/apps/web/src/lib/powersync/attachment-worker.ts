@@ -7,7 +7,7 @@ export const MAX_AUTOMATIC_ATTACHMENT_ATTEMPTS = 5;
 
 export interface PendingAttachmentRow {
   readonly id: string;
-  readonly entity_type: "fuel_entry" | "expense" | "incident";
+  readonly entity_type: "fuel_entry" | "expense" | "incident" | "settlement";
   readonly entity_id: string;
   readonly local_uri: string;
   readonly original_name: string;
@@ -61,7 +61,7 @@ interface AttachmentSupabaseClient {
   };
   from(table: "files"): { insert(row: Record<string, unknown>): PromiseLike<MetadataWriteResult> };
   rpc(
-    name: "attach_trip_file",
+    name: "attach_trip_file" | "attach_settlement_file",
     args: { p_entity_type: string; p_entity_id: string; p_file_id: string },
   ): PromiseLike<MetadataWriteResult>;
 }
@@ -148,11 +148,14 @@ export function createSupabaseAttachmentGateway(
         throw new Error(`No se pudo registrar la evidencia: ${error.message}`);
     },
     async linkToEntity(input) {
-      const { error } = await remote.rpc("attach_trip_file", {
-        p_entity_type: input.entityType,
-        p_entity_id: input.entityId,
-        p_file_id: input.fileId,
-      });
+      const { error } = await remote.rpc(
+        input.entityType === "settlement" ? "attach_settlement_file" : "attach_trip_file",
+        {
+          p_entity_type: input.entityType,
+          p_entity_id: input.entityId,
+          p_file_id: input.fileId,
+        },
+      );
       if (error !== null) throw new Error(`No se pudo vincular la evidencia: ${error.message}`);
     },
   };
@@ -197,7 +200,9 @@ export async function processNextAttachment(input: {
     const blob = await input.blobs.read(row.local_uri);
     if (blob.size !== row.size_bytes)
       throw new Error("La evidencia local cambió desde que fue registrada.");
-    await input.remote.upload(storagePath, blob, row.mime_type);
+    // OPFS restores bytes without the original MIME type. Supabase multipart
+    // uploads read the Blob type, even when a contentType option is provided.
+    await input.remote.upload(storagePath, blob.slice(0, blob.size, row.mime_type), row.mime_type);
     await input.remote.createFileMetadata({
       id: fileId,
       companyId: input.companyId,

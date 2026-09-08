@@ -86,6 +86,24 @@ export class SupabasePowerSyncConnector implements PowerSyncBackendConnector {
 
     for (const entry of batch.crud) {
       try {
+        if (
+          entry.table === "operation_commands" &&
+          typeof entry.opData?.dependency_id === "string"
+        ) {
+          const blocked = await database.getAll<{ id: string }>(
+            "SELECT id FROM upload_dead_letters WHERE source_table = 'operation_commands' AND source_record_id = ? AND status = 'pending_review' LIMIT 1",
+            [entry.opData.dependency_id],
+          );
+          if (blocked.length > 0) {
+            await recordUploadDeadLetter(database, entry, {
+              kind: "terminal",
+              code: "DEPENDENCY_FAILED",
+              message:
+                "La salida requiere atención. Este movimiento se conserva hasta regularizarla.",
+            });
+            continue;
+          }
+        }
         await applyMutation(this.client, mapProductUpload(entry));
       } catch (cause: unknown) {
         const failure = classifyUploadFailure(cause);

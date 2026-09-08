@@ -1,5 +1,7 @@
 # Runbook — Operación productiva inicial
 
+> Actualización DEC-047/048: seguir el [manual de registro rápido general](../planes/operacion-agil-cusco-cusco/03_experiencia_y_sincronizacion.md) para nuevas salidas Cusco–Cusco. Sus reglas sustituyen aquí la obligación de conexión/motivo para captura ordinaria de oficina, el kilometraje obligatorio y la rendición exclusivamente por viaje. El cierre financiero sigue en servidor. El historial anterior permanece bajo su contrato.
+
 **Estado:** vigente para el arranque autorizado el 2026-09-03.
 **Autoridad:** DEC-046; complementa DEC-006, DEC-018 a DEC-021, DEC-027,
 DEC-037, DEC-041, DEC-044 y DEC-045.
@@ -38,12 +40,11 @@ Gerencia realiza y conserva una breve acta o registro de la comprobación:
    y vigentes. No se crean sustitutos ficticios para desbloquear una operación.
 3. Elige para cada viaje el canal de captura: `driver_app` si el Conductor usará
    la PWA; `staff_assisted` si oficina registrará los hechos. El segundo canal
-   requiere conectividad durante cada captura.
+   conserva el contrato histórico para viajes anteriores. Para nuevas salidas, elegir el canal por salida y seguir el manual de captura offline citado arriba.
 4. En el teléfono del Conductor, abre la PWA productiva, inicia sesión y espera
    la sincronización inicial antes de salir a ruta. Comprueba que la pantalla
    indique el viaje asignado y el estado de sincronización.
-5. Comprueba que el viaje de prueba no existe: producción empieza con hechos
-   reales, no con una nueva carga sintética. Si hay una inconsistencia, se
+5. Comprueba que RT-2026-0001 y su adelanto están identificados como prueba y excluidos de saldos reales, conservando su historial auditado. Si hay una inconsistencia, se
    detiene y se registra antes de crear el primer viaje.
 
 ## Operación diaria

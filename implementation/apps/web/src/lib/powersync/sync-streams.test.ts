@@ -82,16 +82,16 @@ describe("PowerSync stream scope contract", () => {
       expect(query).toContain("company_id IN (SELECT id FROM companies WHERE active = true)");
     }
 
-    for (const table of [
-      "trip_transition_requests",
-      "odometer_entries",
-      "fuel_entries",
-      "expenses",
-      "incidents",
-    ]) {
+    for (const table of ["trip_transition_requests", "odometer_entries", "incidents"]) {
       const query = driverQueries.find((candidate) => candidate.includes(`FROM ${table}`));
       expect(query).toContain("AND trip_id IN (");
       expect(query).toContain("SELECT id FROM trips");
+    }
+    for (const table of ["fuel_entries", "expenses", "advances", "settlements"]) {
+      const query = driverQueries.find((candidate) => candidate.includes(`FROM ${table}`));
+      expect(query).toContain(
+        "driver_id IN (SELECT id FROM drivers WHERE profile_id = auth.user_id() AND active = true)",
+      );
     }
   });
 

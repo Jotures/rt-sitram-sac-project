@@ -5,3 +5,4 @@
 
 # Corpus, verdad de campo y resultados con comprobantes reales: sólo locales.
 .local/ocr-benchmark/
+.local/operation-agile/

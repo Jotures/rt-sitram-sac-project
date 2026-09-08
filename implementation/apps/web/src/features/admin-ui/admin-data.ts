@@ -15,6 +15,7 @@ export type AdminTable =
   | "expenses"
   | "advances"
   | "settlements"
+  | "settlement_evidence"
   | "maintenance_plans"
   | "work_orders"
   | "parts"
@@ -64,6 +65,8 @@ export interface AdminListRow {
   readonly version?: number;
   /** Opaque file reference; the UI never receives a Storage path. */
   readonly fileId?: string | undefined;
+  /** Scope for mixed trip/cycle settlement lists. */
+  readonly settlementScope?: "trip" | "cycle" | undefined;
 }
 
 export interface AdminVehicleRow extends AdminListRow {
@@ -112,6 +115,7 @@ export type OperationalCycleReturnStatus =
 export type OperationalCycleLegKind = "outbound" | "return" | "continuation";
 
 export interface AdminOperationalCycleRow extends AdminListRow {
+  readonly returnedAt?: string | null;
   readonly status: OperationalCycleStatus;
   readonly vehicleId: string | null;
   readonly primaryDriverId: string | null;
@@ -263,9 +267,12 @@ export interface AdminDriverDetail {
 export interface AdminSettlementDetail {
   readonly settlement: AdminListRow;
   readonly trip: AdminTripRow | null;
+  readonly cycle: AdminOperationalCycleRow | null;
   readonly driverName: string | null;
   readonly advances: readonly AdminTripDetailLine[];
   readonly expenses: readonly AdminTripDetailLine[];
+  readonly fuelEntries: readonly AdminTripDetailLine[];
+  readonly evidence: readonly AdminListRow[];
   readonly balance: number;
   readonly totalAdvances: number;
   readonly totalExpenses: number;
@@ -457,6 +464,7 @@ export interface AdminDataGateway {
   listFuelEntries(): Promise<readonly AdminListRow[]>;
   listAdvances(): Promise<readonly AdminListRow[]>;
   listSettlements(): Promise<readonly AdminListRow[]>;
+  listSettlementEvidence(settlementId: string): Promise<readonly AdminListRow[]>;
   loadSettlementDetail(settlementId: string): Promise<AdminSettlementDetail>;
   listMaintenance(): Promise<readonly AdminMaintenanceRow[]>;
   loadMaintenanceDetail(workOrderId: string): Promise<AdminMaintenanceDetail | null>;
@@ -543,7 +551,7 @@ export interface AdminDataGateway {
     readonly tripId: string;
     readonly captureMode: "driver_app" | "staff_assisted";
     readonly version: number;
-    readonly reason: string;
+    readonly reason: string | null;
   }): Promise<void>;
   recordStaffTripTransition(input: {
     readonly requestId: string;
@@ -554,16 +562,16 @@ export interface AdminDataGateway {
     readonly occurredAt: string;
     readonly loadState: "loaded" | "empty" | null;
     readonly version: number;
-    readonly reason: string;
+    readonly reason: string | null;
   }): Promise<void>;
   recordStaffTripLoadState(input: {
     readonly id: string;
     readonly tripId: string;
     readonly loadState: "loaded" | "empty";
     readonly effectiveAt: string;
-    readonly odometerKm: number;
+    readonly odometerKm: number | null;
     readonly version: number;
-    readonly reason: string;
+    readonly reason: string | null;
     readonly idempotencyKey: string;
   }): Promise<void>;
   recordStaffTripOdometer(input: {
@@ -573,7 +581,7 @@ export interface AdminDataGateway {
     readonly readingAt: string;
     readonly readingType: string;
     readonly version: number;
-    readonly reason: string;
+    readonly reason: string | null;
     readonly idempotencyKey: string;
   }): Promise<void>;
   recordStaffTripIncident(input: {
@@ -587,7 +595,7 @@ export interface AdminDataGateway {
     readonly actionTaken: string | null;
     readonly estimatedCost: number | null;
     readonly version: number;
-    readonly reason: string;
+    readonly reason: string | null;
     readonly idempotencyKey: string;
   }): Promise<void>;
   transitionTripToUnloading(input: {
@@ -597,7 +605,7 @@ export interface AdminDataGateway {
   startTrip(input: { readonly tripId: string; readonly odometerKm: number }): Promise<void>;
   completeTrip(input: {
     readonly tripId: string;
-    readonly odometerKm: number;
+    readonly odometerKm: number | null;
     readonly cargoDelivered: true;
   }): Promise<void>;
   createOperationalCycle(input: {
@@ -608,6 +616,9 @@ export interface AdminDataGateway {
     readonly returnStatus: OperationalCycleReturnStatus;
     readonly notes: string | null;
     readonly idempotencyKey: string;
+    /** Fast capture uses the additive RPC; legacy callers keep the full form. */
+    readonly status?: OperationalCycleStatus;
+    readonly startedAt?: string | null;
   }): Promise<void>;
   updateOperationalCycle(input: {
     readonly cycleId: string;
@@ -626,7 +637,74 @@ export interface AdminDataGateway {
     readonly cycleId: string;
     readonly tripId: string;
     readonly expectedCycleVersion: number;
-    readonly reason: string;
+    readonly reason: string | null;
+  }): Promise<void>;
+  issueCycleAdvance(input: {
+    readonly id: string;
+    readonly cycleId: string;
+    readonly driverId: string;
+    readonly deliveredAt: string;
+    readonly amount: number;
+    readonly deliveryMethod: string;
+    readonly concept: string | null;
+    readonly idempotencyKey: string;
+  }): Promise<void>;
+  recordCycleExpense(input: {
+    readonly id: string;
+    readonly cycleId: string;
+    readonly driverId: string;
+    readonly categoryId: string;
+    readonly incurredAt: string;
+    readonly amount: number;
+    readonly description: string | null;
+    readonly receiptType: string | null;
+    readonly receiptNumber: string | null;
+    readonly idempotencyKey: string;
+  }): Promise<void>;
+  recordCycleFuelEntry(input: {
+    readonly id: string;
+    readonly cycleId: string;
+    readonly driverId: string;
+    readonly fueledAt: string;
+    readonly location: string | null;
+    readonly odometerKm: number | null;
+    readonly quantity: number;
+    readonly volumeUnit: "gallon" | "liter";
+    readonly unitPrice: number;
+    readonly totalAmount: number;
+    readonly paymentSource: "company" | "driver_fund";
+    readonly paymentMethod: string | null;
+    readonly supplierId: string | null;
+    readonly receiptType: string | null;
+    readonly receiptNumber: string | null;
+    readonly idempotencyKey: string;
+  }): Promise<void>;
+  createCycleSettlement(input: {
+    readonly id: string;
+    readonly cycleId: string;
+    readonly driverId: string;
+    readonly notes: string | null;
+  }): Promise<void>;
+  addSettlementEvidence(
+    context: AdminWriteContext,
+    input: {
+      readonly id: string;
+      readonly settlementId: string;
+      readonly evidenceKind: "expense_sheet" | "fuel_sheet" | "other";
+      readonly caption: string | null;
+      readonly capturedAt: string;
+      readonly file: File;
+    },
+  ): Promise<void>;
+  closeCycleSettlement(input: {
+    readonly settlementId: string;
+    readonly resolutionMethod: string | null;
+    readonly resolutionReference: string | null;
+    readonly resolutionNote: string | null;
+  }): Promise<void>;
+  reopenCycleSettlement(input: {
+    readonly settlementId: string;
+    readonly reason: string | null;
   }): Promise<void>;
   reviewExpense(input: {
     readonly expenseId: string;
@@ -648,7 +726,7 @@ export interface AdminDataGateway {
       readonly receiptNumber: string | null;
       readonly description: string | null;
       /** Why an administrative user records this movement for the trip. */
-      readonly reason: string;
+      readonly reason: string | null;
       readonly idempotencyKey: string;
       readonly receiptFile: File | null;
     },
@@ -661,7 +739,7 @@ export interface AdminDataGateway {
       readonly supplierId: string | null;
       readonly fueledAt: string;
       readonly location: string | null;
-      readonly odometerKm: number;
+      readonly odometerKm: number | null;
       readonly quantity: number;
       readonly volumeUnit: "gallon" | "liter";
       readonly unitPrice: number;
@@ -671,7 +749,7 @@ export interface AdminDataGateway {
       readonly receiptType: string | null;
       readonly receiptNumber: string | null;
       /** Why an administrative user records this movement for the trip. */
-      readonly reason: string;
+      readonly reason: string | null;
       readonly idempotencyKey: string;
       readonly receiptFile: File | null;
     },
@@ -696,7 +774,7 @@ export interface AdminDataGateway {
   }): Promise<void>;
   reopenSettlement(input: {
     readonly settlementId: string;
-    readonly reason: string;
+    readonly reason: string | null;
   }): Promise<void>;
   createSupplier(input: {
     readonly legalName: string;
@@ -894,7 +972,7 @@ export interface AdminDataGateway {
     readonly profileId: string;
     readonly action: ProfileAccessAction;
     readonly nextRole?: AdminProfileRow["role"] | undefined;
-    readonly reason: string;
+    readonly reason: string | null;
   }): Promise<void>;
   resendCompanyInvitation(profileId: string): Promise<void>;
 }
@@ -949,15 +1027,17 @@ const selectColumns: Readonly<Record<AdminTable, string>> = {
   drivers:
     "id, profile_id, display_name, document_type, document_number, phone, license_number, license_expires_on, contract_type, contract_started_on, contract_ended_on, usual_vehicle_id, current_status, active, notes, created_at, updated_at",
   trips:
-    "id, code, client_id, vehicle_id, driver_id, cycle_id, cycle_leg_kind, cycle_sequence, origin, pickup_location, destination, scheduled_at, started_at, operational_finished_at, capture_mode, capture_mode_changed_at, operational_status, administrative_status, financial_status, freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency, notes, version, updated_at",
+    "id, is_test, code, client_id, vehicle_id, driver_id, cycle_id, cycle_leg_kind, cycle_sequence, origin, pickup_location, destination, scheduled_at, started_at, operational_finished_at, capture_mode, capture_mode_changed_at, operational_status, administrative_status, financial_status, freight_amount, freight_pricing_mode, freight_rate_per_ton, additional_amount, currency, notes, version, updated_at",
   operational_cycles:
-    "id, code, vehicle_id, primary_driver_id, status, return_status, notes, version, started_at, ended_at, created_at",
+    "id, code, vehicle_id, primary_driver_id, status, return_status, capture_channel, notes, version, started_at, ended_at, returned_at, scheduled_at, created_at",
   expenses:
-    "id, trip_id, incurred_at, amount, currency, description, validation_status, approved_amount, receipt_type, receipt_number, receipt_file_id",
+    "id, trip_id, cycle_id, driver_id, incurred_at, amount, currency, description, validation_status, approved_amount, receipt_type, receipt_number, receipt_file_id",
   advances:
-    "id, trip_id, driver_id, delivered_at, amount, currency, concept, status, receipt_file_id",
+    "id, is_test, trip_id, cycle_id, driver_id, delivered_at, amount, currency, concept, status, receipt_file_id",
   settlements:
-    "id, trip_id, driver_id, started_at, total_advances, total_expenses, balance, status, version, resolution_direction, resolution_method, resolution_reference, resolution_note, resolved_amount, resolved_at, resolved_by, created_at, updated_at",
+    "id, trip_id, cycle_id, driver_id, started_at, total_advances, total_expenses, balance, status, version, resolution_direction, resolution_method, resolution_reference, resolution_note, resolved_amount, resolved_at, resolved_by, created_at, updated_at",
+  settlement_evidence:
+    "id, settlement_id, file_id, evidence_kind, caption, captured_at, uploaded_by, created_at",
   maintenance_plans:
     "id, vehicle_id, name, maintenance_type, frequency_km, frequency_days, active, updated_at",
   work_orders:
@@ -977,7 +1057,7 @@ const selectColumns: Readonly<Record<AdminTable, string>> = {
   odometer_entries:
     "id, trip_id, vehicle_id, reading_km, reading_at, reading_type, source, created_at",
   fuel_entries:
-    "id, trip_id, fueled_at, location, odometer_km, quantity, volume_unit, unit_price, total_amount, currency, receipt_type, receipt_number, receipt_file_id, validation_status",
+    "id, trip_id, cycle_id, driver_id, fueled_at, location, odometer_km, quantity, volume_unit, unit_price, total_amount, currency, payment_source, receipt_type, receipt_number, receipt_file_id, validation_status",
   incidents:
     "id, trip_id, driver_id, occurred_at, location, incident_type, severity, description, action_taken, status, estimated_cost, file_id",
   trip_status_events:
@@ -996,7 +1076,10 @@ export function createSupabaseAdminDataGateway(
     table: AdminTable,
     orderColumn: string,
   ): Promise<readonly Record<string, unknown>[]> {
-    if (shouldPreferOffline(offline)) return readOfflineRows(offline, table);
+    if (shouldPreferOffline(offline))
+      return (await readOfflineRows(offline, table)).filter(
+        (row) => row.is_test !== true && row.is_test !== 1,
+      );
     try {
       const result = await dataClient
         .from(table)
@@ -1006,10 +1089,14 @@ export function createSupabaseAdminDataGateway(
       if (result.error !== null) throw new Error(result.error.message);
       if (!Array.isArray(result.data))
         throw new Error(`La consulta de ${table} no devolvió una lista válida.`);
-      return result.data.filter(isRecord);
+      return result.data
+        .filter(isRecord)
+        .filter((row) => row.is_test !== true && row.is_test !== 1);
     } catch (error) {
       if (!canFallbackToOffline(offline, error)) throw error;
-      return readOfflineRows(offline, table);
+      return (await readOfflineRows(offline, table)).filter(
+        (row) => row.is_test !== true && row.is_test !== 1,
+      );
     }
   }
 
@@ -1271,17 +1358,32 @@ export function createSupabaseAdminDataGateway(
   }
 
   async function listExpenses(): Promise<readonly AdminListRow[]> {
-    const [expenseRows, trips] = await Promise.all([
+    const [expenseRows, trips, cycleRows, vehicleRows, driverRows] = await Promise.all([
       readRows("expenses", "incurred_at"),
       listTrips(),
+      readRows("operational_cycles", "created_at"),
+      readRows("vehicles", "plate"),
+      readRows("drivers", "display_name"),
     ]);
     const tripsById = new Map(trips.map((trip) => [trip.id, trip] as const));
+    const vehicleLabels = labelsById(vehicleRows, "plate", "Unidad sin placa");
+    const driverLabels = labelsById(driverRows, "display_name", "Conductor sin nombre");
+    const cyclesById = new Map(
+      cycleRows.map((row) => {
+        const cycle = mapOperationalCycleRow(row, vehicleLabels, driverLabels);
+        return [cycle.id, cycle] as const;
+      }),
+    );
     return expenseRows.map((row) => {
       const trip = tripsById.get(readText(row, "trip_id") ?? "");
+      const cycle = cyclesById.get(readText(row, "cycle_id") ?? "");
       return {
         id: requiredId(row),
         title: readText(row, "description") ?? "Gasto de viaje",
-        description: markOfflineDescription(describeTripContext(trip), row),
+        description: markOfflineDescription(
+          trip === undefined ? describeCycleContext(cycle) : describeTripContext(trip),
+          row,
+        ),
         status: isOfflineRow(row)
           ? "Solo lectura local"
           : labelStatus(readText(row, "validation_status")),
@@ -1293,20 +1395,38 @@ export function createSupabaseAdminDataGateway(
   }
 
   async function listFuelEntries(): Promise<readonly AdminListRow[]> {
-    const [fuelRows, trips] = await Promise.all([
+    const [fuelRows, trips, cycleRows, vehicleRows, driverRows] = await Promise.all([
       readRows("fuel_entries", "fueled_at"),
       listTrips(),
+      readRows("operational_cycles", "created_at"),
+      readRows("vehicles", "plate"),
+      readRows("drivers", "display_name"),
     ]);
     const tripsById = new Map(trips.map((trip) => [trip.id, trip] as const));
+    const vehicleLabels = labelsById(vehicleRows, "plate", "Unidad sin placa");
+    const driverLabels = labelsById(driverRows, "display_name", "Conductor sin nombre");
+    const cyclesById = new Map(
+      cycleRows.map((row) => {
+        const cycle = mapOperationalCycleRow(row, vehicleLabels, driverLabels);
+        return [cycle.id, cycle] as const;
+      }),
+    );
     return fuelRows.map((row) => {
       const tripId = readText(row, "trip_id");
       const trip = tripsById.get(tripId ?? "");
+      const cycle = cyclesById.get(readText(row, "cycle_id") ?? "");
       const detail = describeFuel(row);
       return {
         id: requiredId(row),
         title:
           `${formatNumber(readNumber(row, "quantity"))} ${readText(row, "volume_unit") ?? ""}`.trim(),
-        description: markOfflineDescription([describeTripContext(trip), detail].join(" · "), row),
+        description: markOfflineDescription(
+          [
+            trip === undefined ? describeCycleContext(cycle) : describeTripContext(trip),
+            detail,
+          ].join(" · "),
+          row,
+        ),
         status: isOfflineRow(row)
           ? "Solo lectura local"
           : labelStatus(readText(row, "validation_status")),
@@ -1318,15 +1438,29 @@ export function createSupabaseAdminDataGateway(
   }
 
   async function listAdvances(): Promise<readonly AdminListRow[]> {
-    const [advanceRows, trips] = await Promise.all([
+    const [advanceRows, trips, cycleRows, vehicleRows, driverRows] = await Promise.all([
       readRows("advances", "delivered_at"),
       listTrips(),
+      readRows("operational_cycles", "created_at"),
+      readRows("vehicles", "plate"),
+      readRows("drivers", "display_name"),
     ]);
     const tripsById = new Map(trips.map((trip) => [trip.id, trip] as const));
+    const vehicleLabels = labelsById(vehicleRows, "plate", "Unidad sin placa");
+    const driverLabels = labelsById(driverRows, "display_name", "Conductor sin nombre");
+    const cyclesById = new Map(
+      cycleRows.map((row) => {
+        const cycle = mapOperationalCycleRow(row, vehicleLabels, driverLabels);
+        return [cycle.id, cycle] as const;
+      }),
+    );
     return advanceRows.map((row) => ({
       id: requiredId(row),
       title: readText(row, "concept") ?? "Adelanto de viaje",
-      description: describeTripContext(tripsById.get(readText(row, "trip_id") ?? "")),
+      description:
+        readText(row, "cycle_id") === null
+          ? describeTripContext(tripsById.get(readText(row, "trip_id") ?? ""))
+          : describeCycleContext(cyclesById.get(readText(row, "cycle_id") ?? "")),
       status: labelStatus(readText(row, "status")),
       amount: readNumber(row, "amount"),
       date: readText(row, "delivered_at"),
@@ -1337,40 +1471,92 @@ export function createSupabaseAdminDataGateway(
   async function listSettlements(): Promise<readonly AdminListRow[]> {
     const settlementRows = await readRows("settlements", "started_at");
     if (settlementRows.length === 0) return [];
-    const trips = await listTrips();
+    const [trips, cycleRows, vehicleRows, driverRows] = await Promise.all([
+      listTrips(),
+      readRows("operational_cycles", "created_at"),
+      readRows("vehicles", "plate"),
+      readRows("drivers", "display_name"),
+    ]);
     const tripsById = new Map(trips.map((trip) => [trip.id, trip] as const));
-    return settlementRows.map((row) => {
-      const trip = tripsById.get(readText(row, "trip_id") ?? "");
-      const balance = readNumber(row, "balance") ?? 0;
-      const direction =
-        balance > 0
-          ? "El conductor devuelve"
-          : balance < 0
-            ? "La empresa regulariza"
-            : "Saldo conciliado";
-      const route = trip?.title ?? "Viaje sin ruta disponible";
-      return {
-        id: requiredId(row),
-        title: route,
-        description: [
-          trip?.driverName === null || trip?.driverName === undefined
+    const vehicleLabels = labelsById(vehicleRows, "plate", "Unidad sin placa");
+    const driverLabels = labelsById(driverRows, "display_name", "Conductor sin nombre");
+    const cyclesById = new Map(
+      cycleRows.map((row) => {
+        const cycle = mapOperationalCycleRow(row, vehicleLabels, driverLabels);
+        return [cycle.id, cycle] as const;
+      }),
+    );
+    return Promise.all(
+      settlementRows.map(async (row) => {
+        const trip = tripsById.get(readText(row, "trip_id") ?? "");
+        const cycle = cyclesById.get(readText(row, "cycle_id") ?? "");
+        const snapshot =
+          cycle && !shouldPreferOffline(offline)
+            ? await rpc("get_cycle_settlement_snapshot", { p_cycle_id: cycle.id })
+            : null;
+        const balance =
+          (isRecord(snapshot) ? readNumber(snapshot, "balance") : readNumber(row, "balance")) ?? 0;
+        const direction =
+          balance > 0
+            ? "El conductor devuelve"
+            : balance < 0
+              ? "La empresa regulariza"
+              : "Saldo conciliado";
+        const route = cycle?.title ?? trip?.title ?? "Viaje sin ruta disponible";
+        const driverName =
+          trip?.driverName ??
+          (cycle?.primaryDriverId === null || cycle?.primaryDriverId === undefined
             ? null
-            : `Conductor ${trip.driverName}`,
-          trip?.vehiclePlate === null || trip?.vehiclePlate === undefined
+            : (driverLabels.get(cycle.primaryDriverId) ?? null));
+        const vehiclePlate =
+          trip?.vehiclePlate ??
+          (cycle?.vehicleId === null || cycle?.vehicleId === undefined
             ? null
-            : `Unidad ${trip.vehiclePlate}`,
-          `${direction}: S/ ${formatNumber(Math.abs(balance))}`,
-        ]
-          .filter((value): value is string => value !== null)
-          .join(" · "),
-        status: labelStatus(readText(row, "status")),
-        amount: balance,
-        date: readText(row, "started_at"),
-        technicalReference: trip?.code,
-        updatedAt: readText(row, "updated_at") ?? undefined,
-        version: readNumber(row, "version") ?? 1,
-      };
-    });
+            : (vehicleLabels.get(cycle.vehicleId) ?? null));
+        return {
+          id: requiredId(row),
+          title: route,
+          description: [
+            driverName === null || driverName === undefined ? null : `Conductor ${driverName}`,
+            vehiclePlate === null || vehiclePlate === undefined ? null : `Unidad ${vehiclePlate}`,
+            cycle === undefined ? null : "Salida Cusco–Cusco",
+            `${direction}: S/ ${formatNumber(Math.abs(balance))}`,
+          ]
+            .filter((value): value is string => value !== null)
+            .join(" · "),
+          status: labelStatus(readText(row, "status")),
+          amount: balance,
+          date: readText(row, "started_at"),
+          technicalReference: cycle?.title ?? trip?.code,
+          settlementScope: cycle === undefined ? "trip" : "cycle",
+          updatedAt: readText(row, "updated_at") ?? undefined,
+          version: readNumber(row, "version") ?? 1,
+        };
+      }),
+    );
+  }
+
+  async function listSettlementEvidence(settlementId: string): Promise<readonly AdminListRow[]> {
+    const rows = await readRowsWhere(
+      "settlement_evidence",
+      "settlement_id",
+      settlementId,
+      "captured_at",
+    );
+    return rows.map((row) => ({
+      id: requiredId(row),
+      title:
+        readText(row, "evidence_kind") === "fuel_sheet"
+          ? "Hoja de combustible"
+          : readText(row, "evidence_kind") === "other"
+            ? "Otro respaldo"
+            : "Hoja de gastos",
+      description: readText(row, "caption") ?? "Fotografía o PDF adjunto sin descripción",
+      status: "Adjunto privado",
+      amount: null,
+      date: readText(row, "captured_at") ?? readText(row, "created_at"),
+      fileId: readText(row, "file_id") ?? undefined,
+    }));
   }
 
   async function listMaintenance(): Promise<readonly AdminMaintenanceRow[]> {
@@ -1587,21 +1773,55 @@ export function createSupabaseAdminDataGateway(
     if (settlementRow === null)
       throw new Error("La rendición no existe o no está disponible para tu empresa.");
     const tripId = readText(settlementRow, "trip_id");
-    const [settlements, trips, advanceRows, expenseRows, driverRows] = await Promise.all([
+    const cycleId = readText(settlementRow, "cycle_id");
+    const [
+      settlements,
+      trips,
+      cycleRows,
+      vehicleRows,
+      advanceRows,
+      expenseRows,
+      fuelRows,
+      driverRows,
+      snapshot,
+    ] = await Promise.all([
       listSettlements(),
       listTrips(),
-      tripId === null
+      readRows("operational_cycles", "created_at"),
+      readRows("vehicles", "plate"),
+      cycleId !== null
+        ? readRowsWhere("advances", "cycle_id", cycleId, "delivered_at")
+        : tripId === null
+          ? Promise.resolve([])
+          : readRowsWhere("advances", "trip_id", tripId, "delivered_at"),
+      cycleId !== null
+        ? readRowsWhere("expenses", "cycle_id", cycleId, "incurred_at")
+        : tripId === null
+          ? Promise.resolve([])
+          : readRowsWhere("expenses", "trip_id", tripId, "incurred_at"),
+      cycleId === null
         ? Promise.resolve([])
-        : readRowsWhere("advances", "trip_id", tripId, "delivered_at"),
-      tripId === null
-        ? Promise.resolve([])
-        : readRowsWhere("expenses", "trip_id", tripId, "incurred_at"),
+        : readRowsWhere("fuel_entries", "cycle_id", cycleId, "fueled_at"),
       readRows("drivers", "display_name"),
+      cycleId === null
+        ? Promise.resolve(null)
+        : rpc("get_cycle_settlement_snapshot", { p_cycle_id: cycleId }),
     ]);
     const settlement = settlements.find((row) => row.id === settlementId);
     if (settlement === undefined) throw new Error("La rendición no está disponible para tu rol.");
     const trip =
       tripId === null ? null : (trips.find((candidate) => candidate.id === tripId) ?? null);
+    const vehicleLabels = labelsById(vehicleRows, "plate", "Unidad sin placa");
+    const driverLabels = labelsById(driverRows, "display_name", "Conductor sin nombre");
+    const cycle =
+      cycleId === null
+        ? null
+        : (() => {
+            const row = cycleRows.find((candidate) => requiredId(candidate) === cycleId);
+            return row === undefined
+              ? null
+              : mapOperationalCycleRow(row, vehicleLabels, driverLabels);
+          })();
     const advances = advanceRows.map((row) => ({
       id: requiredId(row),
       title: readText(row, "concept") ?? "Adelanto",
@@ -1620,62 +1840,100 @@ export function createSupabaseAdminDataGateway(
       date: readText(row, "incurred_at"),
       fileId: readText(row, "receipt_file_id") ?? undefined,
     }));
+    const fuelEntries = fuelRows.map((row) => ({
+      id: requiredId(row),
+      title:
+        `${formatNumber(readNumber(row, "quantity"))} ${readText(row, "volume_unit") ?? ""}`.trim(),
+      description: `Combustible · ${readText(row, "payment_source") === "driver_fund" ? "fondo del conductor" : "pago de empresa"} · Revisión: ${labelStatus(readText(row, "validation_status"))}`,
+      status: labelStatus(readText(row, "validation_status")),
+      amount: readNumber(row, "total_amount"),
+      date: readText(row, "fueled_at"),
+      fileId: readText(row, "receipt_file_id") ?? undefined,
+    }));
     const blockingExpenses = expenses.filter((expense) =>
       ["pending review", "observed", "pending", "observado"].includes(
         expense.status.toLocaleLowerCase("es-PE"),
+      ),
+    );
+    const blockingFuel = fuelEntries.filter((fuel) =>
+      ["pending review", "observed", "pending", "observado"].includes(
+        fuel.status.toLocaleLowerCase("es-PE"),
       ),
     );
     const driverId = readText(settlementRow, "driver_id");
     const driverRow =
       driverId === null ? undefined : driverRows.find((row) => requiredId(row) === driverId);
     const driverName = driverRow === undefined ? null : readText(driverRow, "display_name");
-    const balance = readNumber(settlementRow, "balance") ?? 0;
+    const snapshotRecord = isRecord(snapshot) ? snapshot : null;
+    const balance =
+      cycleId === null
+        ? (readNumber(settlementRow, "balance") ?? 0)
+        : (readNumber(snapshotRecord ?? {}, "balance") ?? 0);
+    const totalAdvances =
+      cycleId === null
+        ? (readNumber(settlementRow, "total_advances") ?? 0)
+        : (readNumber(snapshotRecord ?? {}, "advances") ??
+          advanceRows.reduce((sum, row) => sum + (readNumber(row, "amount") ?? 0), 0));
+    const totalExpenses =
+      cycleId === null
+        ? (readNumber(settlementRow, "total_expenses") ?? 0)
+        : (readNumber(snapshotRecord ?? {}, "driver_fund_spent") ??
+          expenses.reduce((sum, row) => sum + (row.amount ?? 0), 0) +
+            fuelEntries
+              .filter((row) => row.description.includes("fondo del conductor"))
+              .reduce((sum, row) => sum + (row.amount ?? 0), 0));
+    const evidence = await listSettlementEvidence(settlementId);
     return {
       settlement,
       trip,
+      cycle,
       driverName,
       advances,
       expenses,
+      fuelEntries,
+      evidence,
       balance,
-      totalAdvances: readNumber(settlementRow, "total_advances") ?? 0,
-      totalExpenses: readNumber(settlementRow, "total_expenses") ?? 0,
+      totalAdvances,
+      totalExpenses,
       resolutionDirection: readText(settlementRow, "resolution_direction"),
       resolutionMethod: readText(settlementRow, "resolution_method"),
       resolutionReference: readText(settlementRow, "resolution_reference"),
       resolutionNote: readText(settlementRow, "resolution_note"),
       resolvedAt: readText(settlementRow, "resolved_at"),
       canClose:
-        trip?.operationalStatus === "completed" &&
+        (cycle?.status === "completed" || trip?.operationalStatus === "completed") &&
         readText(settlementRow, "status") !== "closed" &&
-        blockingExpenses.length === 0,
-      blockingExpenses,
+        blockingExpenses.length === 0 &&
+        blockingFuel.length === 0,
+      blockingExpenses: [...blockingExpenses, ...blockingFuel],
     };
   }
 
   async function listInvoices(): Promise<readonly AdminListRow[]> {
-    const [invoiceRows, trips] = await Promise.all([
-      readRows("invoices", "issued_on"),
-      listTrips(),
-    ]);
-    const tripsById = new Map(trips.map((trip) => [trip.id, trip] as const));
-    return invoiceRows.map((row) => {
+    if (shouldPreferOffline(offline))
+      throw new Error("La cobranza requiere conexión para confirmar los saldos.");
+    const result = await dataClient.rpc("get_invoice_accounts", {});
+    if (result.error !== null) throw new Error(result.error.message);
+    if (!Array.isArray(result.data))
+      throw new Error("No se pudieron confirmar los saldos de cobranza.");
+    return result.data.filter(isRecord).map((row) => {
       const dueOn = readText(row, "due_on");
       return {
         id: requiredId(row),
         title: invoiceReference(row),
         description: [
-          describeTripContext(tripsById.get(readText(row, "trip_id") ?? "")),
+          readText(row, "client_name"),
+          readText(row, "trip_code"),
           dueOn === null ? null : `Vence ${formatDate(dueOn)}`,
         ]
           .filter((value): value is string => value !== null)
           .join(" · "),
         status: labelStatus(readText(row, "status")),
-        amount: readNumber(row, "total"),
+        amount: readNumber(row, "remaining"),
         date: dueOn ?? readText(row, "issued_on"),
       };
     });
   }
-
   async function listAlerts(): Promise<readonly AdminAlertRow[]> {
     return (await readRows("alerts", "generated_at")).map((row) => ({
       id: requiredId(row),
@@ -2113,6 +2371,7 @@ export function createSupabaseAdminDataGateway(
     listFuelEntries,
     listAdvances,
     listSettlements,
+    listSettlementEvidence,
     loadSettlementDetail,
     listMaintenance,
     loadMaintenanceDetail,
@@ -2390,15 +2649,27 @@ export function createSupabaseAdminDataGateway(
       });
     },
     createOperationalCycle: async (input) => {
-      await rpc("create_operational_cycle", {
-        p_id: input.id,
-        p_code: input.code,
-        p_vehicle_id: input.vehicleId,
-        p_primary_driver_id: input.primaryDriverId,
-        p_return_status: input.returnStatus,
-        p_notes: input.notes,
-        p_idempotency_key: input.idempotencyKey,
-      });
+      if (input.status !== undefined) {
+        await rpc("create_quick_operational_cycle", {
+          p_id: input.id,
+          p_vehicle_id: input.vehicleId,
+          p_primary_driver_id: input.primaryDriverId,
+          p_started_at: input.startedAt ?? null,
+          p_status: input.status,
+          p_notes: input.notes,
+          p_idempotency_key: input.idempotencyKey,
+        });
+      } else {
+        await rpc("create_operational_cycle", {
+          p_id: input.id,
+          p_code: input.code,
+          p_vehicle_id: input.vehicleId,
+          p_primary_driver_id: input.primaryDriverId,
+          p_return_status: input.returnStatus,
+          p_notes: input.notes,
+          p_idempotency_key: input.idempotencyKey,
+        });
+      }
     },
     updateOperationalCycle: async (input) => {
       await rpc("update_operational_cycle", {
@@ -2422,6 +2693,93 @@ export function createSupabaseAdminDataGateway(
         p_cycle_id: input.cycleId,
         p_trip_id: input.tripId,
         p_expected_cycle_version: input.expectedCycleVersion,
+        p_reason: input.reason,
+      });
+    },
+    issueCycleAdvance: async (input) => {
+      await rpc("issue_cycle_advance", {
+        p_id: input.id,
+        p_cycle_id: input.cycleId,
+        p_driver_id: input.driverId,
+        p_delivered_at: input.deliveredAt,
+        p_amount: input.amount,
+        p_delivery_method: input.deliveryMethod,
+        p_concept: input.concept,
+        p_idempotency_key: input.idempotencyKey,
+      });
+    },
+    recordCycleExpense: async (input) => {
+      await rpc("record_cycle_expense", {
+        p_id: input.id,
+        p_cycle_id: input.cycleId,
+        p_driver_id: input.driverId,
+        p_category_id: input.categoryId,
+        p_incurred_at: input.incurredAt,
+        p_amount: input.amount,
+        p_currency: "PEN",
+        p_receipt_type: input.receiptType,
+        p_receipt_number: input.receiptNumber,
+        p_receipt_file_id: null,
+        p_description: input.description,
+        p_idempotency_key: input.idempotencyKey,
+      });
+    },
+    recordCycleFuelEntry: async (input) => {
+      await rpc("record_cycle_fuel_entry", {
+        p_id: input.id,
+        p_cycle_id: input.cycleId,
+        p_driver_id: input.driverId,
+        p_fueled_at: input.fueledAt,
+        p_location: input.location,
+        p_odometer_km: input.odometerKm,
+        p_quantity: input.quantity,
+        p_volume_unit: input.volumeUnit,
+        p_unit_price: input.unitPrice,
+        p_total_amount: input.totalAmount,
+        p_currency: "PEN",
+        p_payment_source: input.paymentSource,
+        p_payment_method: input.paymentMethod,
+        p_supplier_id: input.supplierId,
+        p_receipt_type: input.receiptType,
+        p_receipt_number: input.receiptNumber,
+        p_receipt_file_id: null,
+        p_idempotency_key: input.idempotencyKey,
+      });
+    },
+    createCycleSettlement: async (input) => {
+      await rpc("create_cycle_settlement", {
+        p_id: input.id,
+        p_cycle_id: input.cycleId,
+        p_driver_id: input.driverId,
+        p_notes: input.notes,
+      });
+    },
+    addSettlementEvidence: async (context, input) => {
+      const existing = await readFirstWhere("settlement_evidence", "id", input.id);
+      if (existing !== null) return;
+      const fileId = await uploadPrivateDocumentFile(context, input.file, input.id);
+      await insertRow("settlement_evidence", {
+        id: input.id,
+        company_id: context.companyId,
+        settlement_id: input.settlementId,
+        file_id: fileId,
+        evidence_kind: input.evidenceKind,
+        caption: input.caption,
+        captured_at: input.capturedAt,
+        uploaded_by: context.profileId,
+      });
+    },
+    closeCycleSettlement: async (input) => {
+      await rpc("close_cycle_settlement", {
+        p_settlement_id: input.settlementId,
+        p_resolution_method: input.resolutionMethod,
+        p_resolution_reference: input.resolutionReference,
+        p_resolution_note: input.resolutionNote,
+      });
+    },
+    reopenCycleSettlement: async (input) => {
+      await rpc("reopen_cycle_settlement", {
+        p_settlement_id: input.settlementId,
         p_reason: input.reason,
       });
     },
@@ -2708,12 +3066,14 @@ export function createSupabaseAdminDataGateway(
       });
     },
     registerPayment: async (_context, input) => {
-      await rpc("register_invoice_payment", {
-        invoice_id: input.invoiceId,
-        paid_at: input.paidAt,
-        amount: input.amount,
-        method: input.paymentMethod,
-        reference: input.reference,
+      await rpc("record_commercial_payment", {
+        p_payment_id: input.paymentId,
+        p_idempotency_key: input.idempotencyKey,
+        p_invoice_id: input.invoiceId,
+        p_paid_at: input.paidAt,
+        p_amount: input.amount,
+        p_payment_method: input.paymentMethod,
+        p_reference: input.reference,
       });
     },
     resolveAlert: async (_context, alertId, note) => {
@@ -2755,6 +3115,9 @@ interface OfflineTableConfig {
 }
 
 const offlineTableConfigs: Readonly<Partial<Record<AdminTable, OfflineTableConfig>>> = {
+  operational_cycles: { scope: "company", orderBy: "created_at", filters: ["id"] },
+  expense_categories: { scope: "company", orderBy: "name", filters: ["id"] },
+  suppliers: { scope: "company", orderBy: "legal_name", filters: ["id"] },
   profiles: { scope: "company", orderBy: "created_at", filters: ["id"] },
   clients: { scope: "company", orderBy: "updated_at", filters: ["id"] },
   vehicles: { scope: "company", orderBy: "plate", filters: ["id"] },
@@ -3347,6 +3710,11 @@ function describeTripContext(trip: AdminTripRow | undefined): string {
     .join(" · ");
 }
 
+function describeCycleContext(cycle: AdminOperationalCycleRow | undefined): string {
+  if (cycle === undefined) return "Salida sin referencia disponible";
+  return `${cycle.title} · Salida Cusco–Cusco`;
+}
+
 function invoiceReference(row: Record<string, unknown>): string {
   const reference = [readText(row, "series"), readText(row, "number")]
     .filter((value): value is string => value !== null && value !== "")
@@ -3623,6 +3991,7 @@ function mapOperationalCycleRow(
     vehicleId,
     primaryDriverId,
     returnStatus,
+    returnedAt: readText(row, "returned_at"),
     notes: readText(row, "notes"),
     version: readNumber(row, "version") ?? 1,
   };

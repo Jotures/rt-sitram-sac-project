@@ -101,6 +101,7 @@ const suppliers = new Table(
 const trips = new Table(
   {
     company_id: column.text,
+    is_test: column.integer,
     code: column.text,
     cycle_id: column.text,
     client_id: column.text,
@@ -135,6 +136,48 @@ const trips = new Table(
   },
 );
 
+const operationalCycles = Table.createInsertOnly(
+  {
+    company_id: column.text,
+    code: column.text,
+    vehicle_id: column.text,
+    primary_driver_id: column.text,
+    status: column.text,
+    return_status: column.text,
+    started_at: column.text,
+    ended_at: column.text,
+    notes: column.text,
+    capture_channel: column.text,
+    scheduled_at: column.text,
+    returned_at: column.text,
+    version: column.integer,
+    idempotency_key: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { companyStatus: ["company_id", "status"], driver: ["primary_driver_id"] } },
+);
+
+const advances = Table.createInsertOnly(
+  {
+    company_id: column.text,
+    is_test: column.integer,
+    status: column.text,
+    cycle_id: column.text,
+    trip_id: column.text,
+    driver_id: column.text,
+    delivered_at: column.text,
+    amount: column.real,
+    currency: column.text,
+    delivery_method: column.text,
+    concept: column.text,
+    source_device_id: column.text,
+    idempotency_key: column.text,
+    created_at: column.text,
+  },
+  { indexes: { cycle: ["cycle_id", "delivered_at"], trip: ["trip_id", "delivered_at"] } },
+);
+
 const odometerEntries = Table.createInsertOnly(
   {
     trip_id: column.text,
@@ -151,8 +194,13 @@ const odometerEntries = Table.createInsertOnly(
 
 const fuelEntries = Table.createInsertOnly(
   {
+    company_id: column.text,
+    validation_status: column.text,
+    approved_amount: column.real,
     trip_id: column.text,
+    cycle_id: column.text,
     vehicle_id: column.text,
+    driver_id: column.text,
     supplier_id: column.text,
     fueled_at: column.text,
     location: column.text,
@@ -162,6 +210,7 @@ const fuelEntries = Table.createInsertOnly(
     unit_price: column.real,
     total_amount: column.real,
     currency: column.text,
+    payment_source: column.text,
     payment_method: column.text,
     receipt_type: column.text,
     receipt_number: column.text,
@@ -170,14 +219,25 @@ const fuelEntries = Table.createInsertOnly(
     created_at: column.text,
     updated_at: column.text,
   },
-  { indexes: { trip: ["trip_id", "fueled_at"], vehicle: ["vehicle_id", "fueled_at"] } },
+  {
+    indexes: {
+      trip: ["trip_id", "fueled_at"],
+      cycle: ["cycle_id", "fueled_at"],
+      vehicle: ["vehicle_id", "fueled_at"],
+    },
+  },
 );
 
 const expenses = Table.createInsertOnly(
   {
+    company_id: column.text,
+    validation_status: column.text,
+    approved_amount: column.real,
     assignment_type: column.text,
     trip_id: column.text,
+    cycle_id: column.text,
     vehicle_id: column.text,
+    driver_id: column.text,
     category_id: column.text,
     supplier_id: column.text,
     incurred_at: column.text,
@@ -192,7 +252,7 @@ const expenses = Table.createInsertOnly(
     created_at: column.text,
     updated_at: column.text,
   },
-  { indexes: { trip: ["trip_id", "incurred_at"] } },
+  { indexes: { trip: ["trip_id", "incurred_at"], cycle: ["cycle_id", "incurred_at"] } },
 );
 
 const incidents = Table.createInsertOnly(
@@ -246,6 +306,7 @@ const settlements = new Table(
   {
     company_id: column.text,
     trip_id: column.text,
+    cycle_id: column.text,
     driver_id: column.text,
     started_at: column.text,
     submitted_at: column.text,
@@ -268,7 +329,7 @@ const settlements = new Table(
     created_at: column.text,
     updated_at: column.text,
   },
-  { indexes: { companyStatus: ["company_id", "status"], trip: ["trip_id"] } },
+  { indexes: { companyStatus: ["company_id", "status"], trip: ["trip_id"], cycle: ["cycle_id"] } },
 );
 
 // Binary evidence is never stored in SQLite. This local-only table tracks a URI
@@ -333,7 +394,77 @@ const uploadDeadLetters = Table.createLocalOnly(
   },
 );
 
+const operationCommands = Table.createInsertOnly(
+  {
+    company_id: column.text,
+    actor_id: column.text,
+    kind: column.text,
+    payload: column.text,
+    contract_version: column.integer,
+    dependency_id: column.text,
+    source_device_id: column.text,
+    status: column.text,
+    result_id: column.text,
+    created_at: column.text,
+    confirmed_at: column.text,
+  },
+  { indexes: { company: ["company_id", "created_at"], dependency: ["dependency_id"] } },
+);
+
+// Insert-only writes enter the upload queue without becoming readable rows.
+// Keep the immutable local envelope until its authoritative confirmation arrives.
+const operationCommandJournal = Table.createLocalOnly({
+  company_id: column.text,
+  actor_id: column.text,
+  kind: column.text,
+  payload: column.text,
+  contract_version: column.integer,
+  dependency_id: column.text,
+  source_device_id: column.text,
+  status: column.text,
+  created_at: column.text,
+});
+
+const cycleRenditionSummaries = new Table({
+  company_id: column.text,
+  cycle_id: column.text,
+  lines: column.text,
+  baseline: column.text,
+  status: column.text,
+  version: column.integer,
+  updated_by: column.text,
+  updated_at: column.text,
+});
+const cycleBalancePayments = new Table({
+  company_id: column.text,
+  settlement_id: column.text,
+  direction: column.text,
+  amount: column.real,
+  method: column.text,
+  reference: column.text,
+  occurred_at: column.text,
+  actor_id: column.text,
+  cancelled_at: column.text,
+  cancellation_reason: column.text,
+  created_at: column.text,
+});
+const settlementEvidence = new Table({
+  company_id: column.text,
+  settlement_id: column.text,
+  file_id: column.text,
+  evidence_kind: column.text,
+  caption: column.text,
+  captured_at: column.text,
+  uploaded_by: column.text,
+  created_at: column.text,
+});
+
 export const powerSyncSchema = new Schema({
+  cycle_rendition_summaries: cycleRenditionSummaries,
+  cycle_balance_payments: cycleBalancePayments,
+  settlement_evidence: settlementEvidence,
+  operation_commands: operationCommands,
+  operation_command_journal: operationCommandJournal,
   companies,
   profiles,
   drivers,
@@ -342,6 +473,8 @@ export const powerSyncSchema = new Schema({
   expense_categories: expenseCategories,
   suppliers,
   trips,
+  operational_cycles: operationalCycles,
+  advances,
   odometer_entries: odometerEntries,
   fuel_entries: fuelEntries,
   expenses,
@@ -355,6 +488,10 @@ export const powerSyncSchema = new Schema({
 });
 
 export const POWER_SYNC_REMOTE_TABLES = [
+  "cycle_rendition_summaries",
+  "cycle_balance_payments",
+  "settlement_evidence",
+  "operation_commands",
   "companies",
   "profiles",
   "drivers",
@@ -363,6 +500,8 @@ export const POWER_SYNC_REMOTE_TABLES = [
   "expense_categories",
   "suppliers",
   "trips",
+  "operational_cycles",
+  "advances",
   "odometer_entries",
   "fuel_entries",
   "expenses",
@@ -373,6 +512,9 @@ export const POWER_SYNC_REMOTE_TABLES = [
 ] as const;
 
 export const POWER_SYNC_WRITABLE_TABLES = [
+  "operation_commands",
+  "operational_cycles",
+  "advances",
   "odometer_entries",
   "fuel_entries",
   "expenses",

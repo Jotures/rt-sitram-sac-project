@@ -43,6 +43,33 @@ function row(overrides: Partial<UploadDeadLetterRow> = {}): UploadDeadLetterRow 
 }
 
 describe("terminal upload recovery service", () => {
+  it("retries an operation with the original request id and exact dependent payload", async () => {
+    const payload = {
+      kind: "advance",
+      payload: JSON.stringify({
+        cycle_id: tripId,
+        amount: 200,
+        method: "cash",
+        occurred_at: "2026-09-07T12:00:00Z",
+      }),
+      contract_version: 1,
+      dependency_id: tripId,
+      source_device_id: "office",
+      status: "pending",
+      created_at: "2026-09-07T12:00:00Z",
+    };
+    const original = row({
+      source_table: "operation_commands",
+      op_data_json: JSON.stringify(payload),
+    });
+    const execute = vi.fn();
+    const db = {
+      getAll: vi.fn(async (sql: string) => (sql.startsWith("SELECT *") ? [original] : [])),
+      writeTransaction: async (fn: (tx: unknown) => Promise<void>) => fn({ execute }),
+    } as unknown as Parameters<typeof retryUploadDeadLetter>[0];
+    expect(await retryUploadDeadLetter(db, original.id, true)).toBe(entryId);
+    expect(execute.mock.calls[0]?.[1]).toEqual([entryId, ...Object.values(payload)]);
+  });
   it("classifies only proven validation/business errors as terminal", () => {
     expect(
       classifyUploadFailure(new Error("PowerSync upload rejected: invalid UUID.")),

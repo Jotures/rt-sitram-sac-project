@@ -8,7 +8,7 @@ export type AttachmentRecoveryAction =
 
 export interface FailedAttachmentRow {
   readonly id: string;
-  readonly entity_type: "fuel_entry" | "expense" | "incident";
+  readonly entity_type: "fuel_entry" | "expense" | "incident" | "settlement";
   readonly entity_id: string;
   readonly local_uri: string;
   readonly original_name: string;
@@ -22,6 +22,7 @@ export interface FailedAttachmentRow {
 
 interface AttachmentRecoveryTransaction {
   execute(sql: string, parameters?: unknown[]): Promise<unknown>;
+  getAll<T>(sql: string, parameters?: unknown[]): Promise<T[]>;
 }
 
 interface AttachmentRecoveryDatabase {
@@ -32,13 +33,18 @@ interface AttachmentRecoveryDatabase {
   ): Promise<T>;
 }
 
-function requireSingleRow(result: unknown): void {
-  if (
-    typeof result !== "object" ||
-    result === null ||
-    !("rowsAffected" in result) ||
-    result.rowsAffected !== 1
-  ) {
+async function requireQueueState(
+  transaction: AttachmentRecoveryTransaction,
+  id: string,
+  status: string,
+): Promise<void> {
+  // PowerSync tables are SQLite views with INSTEAD OF triggers: rowsAffected
+  // can be zero after a successful update. Verify the row inside the transaction.
+  const rows = await transaction.getAll<{ id: string }>(
+    "SELECT id FROM attachment_queue WHERE id = ? AND status = ?",
+    [id, status],
+  );
+  if (rows.length !== 1) {
     throw new Error("El estado de la evidencia cambió; actualiza la pantalla antes de continuar.");
   }
 }
@@ -118,13 +124,13 @@ export async function retryFailedAttachment(
       reason: "Reintento manual confirmado por el usuario.",
       createdAt,
     });
-    const result = await transaction.execute(
+    await transaction.execute(
       `UPDATE attachment_queue
        SET status = 'pending', attempts = 0, last_error = NULL, updated_at = ?
        WHERE id = ? AND status = 'failed' AND attempts >= 5`,
       [createdAt, id],
     );
-    requireSingleRow(result);
+    await requireQueueState(transaction, id, "pending");
   });
 }
 
@@ -160,12 +166,12 @@ export async function discardFailedAttachment(
         reason,
         createdAt,
       });
-      const result = await transaction.execute(
+      await transaction.execute(
         `UPDATE attachment_queue SET status = 'discarding', updated_at = ?
          WHERE id = ? AND status = 'failed' AND attempts >= 5`,
         [createdAt, id],
       );
-      requireSingleRow(result);
+      await requireQueueState(transaction, id, "discarding");
     });
   }
 
@@ -182,12 +188,12 @@ export async function discardFailedAttachment(
           reason: message.slice(0, 500),
           createdAt,
         });
-        const result = await transaction.execute(
+        await transaction.execute(
           `UPDATE attachment_queue SET status = 'failed', last_error = ?, updated_at = ?
            WHERE id = ? AND status = 'discarding'`,
           [`No se pudo descartar: ${message}`.slice(0, 500), createdAt, id],
         );
-        requireSingleRow(result);
+        await requireQueueState(transaction, id, "failed");
       });
     } catch {
       // The queue row remains in the non-uploadable `discarding` state, so
@@ -203,12 +209,12 @@ export async function discardFailedAttachment(
       reason,
       createdAt,
     });
-    const result = await transaction.execute(
+    await transaction.execute(
       `UPDATE attachment_queue
        SET status = 'discarded', last_error = NULL, updated_at = ?
        WHERE id = ? AND status = 'discarding'`,
       [createdAt, id],
     );
-    requireSingleRow(result);
+    await requireQueueState(transaction, id, "discarded");
   });
 }

@@ -26,8 +26,8 @@ describe("role navigation", () => {
     expect(
       navigation.flatMap((group) => group.items).find((item) => item.id === "operationalCycles"),
     ).toMatchObject({
-      label: "Ciclos operativos",
-      description: "Agrupa tramos relacionados sin mezclar los cierres de cada viaje.",
+      label: "Salidas",
+      description: "Reúne servicios y la cuenta del conductor en cada salida Cusco–Cusco.",
     });
   });
 
@@ -75,8 +75,8 @@ describe("role navigation", () => {
     ]);
   });
 
-  it("shows GPS odometer governance only to management on desktop", () => {
-    expect(navigationIds(getDesktopNavigation("management"))).toContain("gpsOdometerSettings");
+  it("archives GPS governance from ordinary navigation for every role", () => {
+    expect(navigationIds(getDesktopNavigation("management"))).not.toContain("gpsOdometerSettings");
     expect(navigationIds(getDesktopNavigation("administration"))).not.toContain(
       "gpsOdometerSettings",
     );

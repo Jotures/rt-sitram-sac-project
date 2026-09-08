@@ -50,13 +50,14 @@ describe("attachment queue worker", () => {
     await expect(
       processNextAttachment({
         database,
-        blobs: { read: async () => new Blob(["abc"], { type: "image/jpeg" }) },
+        blobs: { read: async () => new Blob(["abc"]) },
         remote,
         companyId: "company-a",
         profileId: "user-a",
       }),
     ).resolves.toBe("UPLOADED");
     expect(remote.upload).toHaveBeenCalledOnce();
+    expect(vi.mocked(remote.upload).mock.calls[0]?.[1].type).toBe("image/jpeg");
     expect(remote.createFileMetadata).toHaveBeenCalledOnce();
     expect(remote.linkToEntity).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenLastCalledWith(

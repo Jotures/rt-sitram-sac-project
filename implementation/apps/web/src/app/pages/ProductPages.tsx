@@ -18,6 +18,8 @@ import {
 } from "../../features/driver-ui";
 import { useIdentity } from "../../features/identity/IdentityProvider";
 import { useAuth } from "../../features/auth/AuthProvider";
+import { OperationModeSettings } from "../../features/operation-mode/OperationModeProvider";
+import { ExpenseCategorySettings } from "../../features/operation-mode/AccountAdministration";
 import { routePaths, type ProductRouteId } from "../routing/route-model";
 import { getProductRouteIdForPath } from "../routing/route-experience";
 import "./product-pages.css";
@@ -492,6 +494,8 @@ function MyProfilePage(): React.JSX.Element {
   return (
     <>
       <PageHeader description="Tu identidad, acceso y opciones de sesión." title="Mi perfil" />
+      <OperationModeSettings />
+      <ExpenseCategorySettings />
       <section className="workspace-panel profile-panel">
         <dl>
           <div>

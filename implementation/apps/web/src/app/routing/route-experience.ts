@@ -61,7 +61,7 @@ export const productRouteExperience: Readonly<Record<ProductRouteId, ProductRout
     parentId: "trips",
   },
   scheduling: { label: "Programación", family: "operations", variant: "root" },
-  operationalCycles: { label: "Ciclos operativos", family: "operations", variant: "root" },
+  operationalCycles: { label: "Salidas", family: "operations", variant: "root" },
   tripEvaluator: { label: "Evaluar viaje", family: "operations", variant: "root" },
   fleet: { label: "Flota", family: "management", variant: "root" },
   vehicleDetail: { label: "Unidad", family: "management", variant: "detail", parentId: "fleet" },
