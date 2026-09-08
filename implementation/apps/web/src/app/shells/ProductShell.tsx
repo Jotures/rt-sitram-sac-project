@@ -282,6 +282,7 @@ export function ProductShell(): React.JSX.Element {
     )
     .sort((left, right) => right.path.length - left.path.length)[0];
   const currentRouteId = getProductRouteIdForPath(location.pathname);
+  const shouldShowOperationModeLink = currentRouteId !== "home";
   const currentRouteExperience =
     currentRouteId === null ? null : getRouteExperience(currentRouteId);
   const parentRouteId = currentRouteExperience?.parentId;
@@ -428,13 +429,15 @@ export function ProductShell(): React.JSX.Element {
                 {currentPageLabel}
               </strong>
             </div>
-            <Link
-              className="operation-mode-link"
-              to="/perfil"
-              aria-label="Cambiar la forma de trabajar en Mi perfil"
-            >
-              {quick ? "Modo rápido" : "Vista completa"}
-            </Link>
+            {shouldShowOperationModeLink && (
+              <Link
+                className="operation-mode-link"
+                to="/perfil"
+                aria-label="Cambiar la forma de trabajar en Mi perfil"
+              >
+                {quick ? "Modo rápido" : "Vista completa"}
+              </Link>
+            )}
             <div
               aria-atomic="true"
               aria-label={`Estado de datos: ${syncPresentation.label}. ${syncPresentation.detail}.`}

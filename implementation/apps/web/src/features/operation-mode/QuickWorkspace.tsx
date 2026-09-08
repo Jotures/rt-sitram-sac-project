@@ -2,6 +2,7 @@ import { usePowerSync, useQuery } from "@powersync/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/primitives/Button";
+import { Icon } from "../../components/primitives/Icon";
 import { powerSyncIdentityStore } from "../../lib/powersync/identity-store";
 import { operationActivitySql } from "../../lib/powersync/operation-journal";
 import { getOrCreateDeviceId } from "../driver-ui/device-and-evidence";
@@ -55,6 +56,21 @@ function amount(form: FormData, name: string): number {
 }
 function occurredAt(form: FormData): string {
   return new Date(text(form, "occurred_at")).toISOString();
+}
+
+function operationDateLabel(value = new Date()): string {
+  return new Intl.DateTimeFormat("es-PE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(value);
+}
+
+function cycleStateLabel(cycle: Pick<AdminOperationalCycleRow, "status" | "returnedAt">): string {
+  if (cycle.status === "completed") return "Regresó a Cusco";
+  if (cycle.status === "planned") return "Programada";
+  if (cycle.returnedAt) return "Regreso registrado";
+  return "En recorrido";
 }
 function service(form: FormData): ServiceInput {
   return {
@@ -149,6 +165,10 @@ export function QuickWorkspace({
   const selectedId = search.get("salida") ?? "";
   const selected = cycles.find((cycle) => cycle.id === selectedId);
   const pendingSelected = pendingCycles.find((cycle) => cycle.id === selectedId);
+  const activeCycles = cycles.filter((cycle) => cycle.status === "active");
+  const visibleCommands = commands.filter(
+    (command) => !selectedId || command.id === selectedId || command.dependency_id === selectedId,
+  );
   const selectCycle = (id: string): void => {
     setSearch((previous) => {
       const next = new URLSearchParams(previous);
@@ -175,13 +195,22 @@ export function QuickWorkspace({
   return (
     <section className="quick-workspace" aria-label="Registro de operaciones">
       {!compact && (
-        <header className="page-header">
-          <div>
+        <header className="quick-dashboard-header">
+          <div className="quick-dashboard-header__copy">
+            <p className="quick-dashboard-header__date">
+              <Icon name="calendar" size={16} /> {operationDateLabel()}
+            </p>
             <h1>Operación del día</h1>
             <p>
-              Registra lo que ocurrió. Cada salida reúne la cuenta del conductor hasta su regreso a
-              Cusco.
+              Registra la salida, el dinero y los gastos del recorrido. Los servicios se agregan
+              cuando ya estén confirmados.
             </p>
+          </div>
+          <div className="quick-dashboard-header__status" aria-label="Estado del día">
+            <span>{activeCycles.length}</span>
+            <small>
+              {activeCycles.length === 1 ? "salida en recorrido" : "salidas en recorrido"}
+            </small>
           </div>
         </header>
       )}
@@ -193,18 +222,33 @@ export function QuickWorkspace({
           </Button>
         </p>
       )}
-      <div className="operation-quick-actions" aria-label="Acciones frecuentes">
-        <Button onClick={() => chooseAction("departure")}>Registrar salida</Button>
-        <Button variant="quiet" onClick={() => chooseAction("advance")}>
-          Entregar dinero
-        </Button>
-        <Button variant="quiet" onClick={() => chooseAction("expense")}>
-          Registrar gasto
-        </Button>
-        <Button variant="quiet" onClick={() => chooseAction("fuel")}>
-          Combustible
-        </Button>
-      </div>
+      <section className="quick-action-panel" aria-labelledby="quick-action-title">
+        <div className="quick-action-panel__heading">
+          <div>
+            <p>Lo primero</p>
+            <h2 id="quick-action-title">¿Qué quieres registrar?</h2>
+          </div>
+          <span>Datos esenciales</span>
+        </div>
+        <div className="quick-action-panel__actions" aria-label="Acciones frecuentes">
+          <Button
+            className="quick-action-panel__primary"
+            icon="truck"
+            onClick={() => chooseAction("departure")}
+          >
+            Registrar salida
+          </Button>
+          <Button variant="secondary" icon="money" onClick={() => chooseAction("advance")}>
+            Entregar dinero
+          </Button>
+          <Button variant="secondary" icon="file" onClick={() => chooseAction("expense")}>
+            Registrar gasto
+          </Button>
+          <Button variant="secondary" icon="fuel" onClick={() => chooseAction("fuel")}>
+            Combustible
+          </Button>
+        </div>
+      </section>
       {action !== null && action !== "departure" && (
         <label className="admin-field">
           <span>Salida de la unidad</span>
@@ -246,19 +290,14 @@ export function QuickWorkspace({
         />
       )}
       {selected !== undefined && (
-        <section className="admin-card">
-          <div className="admin-card__heading">
+        <section className="admin-card quick-cycle-detail">
+          <div className="admin-card__heading quick-cycle-detail__heading">
             <div>
+              <p className="quick-cycle-detail__eyebrow">Salida seleccionada</p>
               <h2>{selected.title}</h2>
               <p>{selected.description}</p>
             </div>
-            <span>
-              {selected.status === "completed"
-                ? "Regresó a Cusco"
-                : selected.status === "planned"
-                  ? "Programada"
-                  : "En recorrido"}
-            </span>
+            <span>{cycleStateLabel(selected)}</span>
           </div>
           <div className="operation-quick-actions">
             {selected.status === "planned" && (
@@ -292,15 +331,21 @@ export function QuickWorkspace({
         </section>
       )}
       {!compact && (
-        <section className="admin-card">
-          <h2>Salidas recientes</h2>
+        <section className="quick-outings" aria-labelledby="quick-outings-title">
+          <div className="quick-section-heading">
+            <div>
+              <p>Vista rápida</p>
+              <h2 id="quick-outings-title">Salidas de la unidad</h2>
+            </div>
+            <span>{cycles.length} registradas</span>
+          </div>
           {cycles.length === 0 && pendingCycles.length === 0 && (
-            <p>
+            <p className="quick-outings__empty">
               Todavía no hay salidas. Puedes registrar una sin conocer el cliente o el primer flete.
             </p>
           )}
           {pendingCycles.map((cycle) => (
-            <article className="admin-list-row" key={cycle.id}>
+            <article className="quick-outing-card quick-outing-card--pending" key={cycle.id}>
               <div>
                 <strong>Salida por confirmar</strong>
                 <p>
@@ -308,20 +353,36 @@ export function QuickWorkspace({
                     "Guardado en este dispositivo · pendiente de confirmación"}
                 </p>
               </div>
-              <Button variant="quiet" onClick={() => selectCycle(cycle.id)}>
+              <Button variant="secondary" onClick={() => selectCycle(cycle.id)}>
                 Ver salida
               </Button>
             </article>
           ))}
-          {cycles.slice(0, 20).map((cycle) => (
-            <article className="admin-list-row" key={cycle.id}>
-              <div>
+          {cycles.slice(0, 6).map((cycle) => (
+            <article className="quick-outing-card" key={cycle.id}>
+              <div className="quick-outing-card__date">
+                <Icon name="calendar" size={17} />
+                <span>
+                  {cycle.date
+                    ? new Date(cycle.date).toLocaleDateString("es-PE", {
+                        day: "numeric",
+                        month: "short",
+                      })
+                    : "Fecha pendiente"}
+                </span>
+              </div>
+              <div className="quick-outing-card__main">
                 <strong>{cycle.title}</strong>
                 <p>{cycle.description}</p>
               </div>
+              <span
+                className={`quick-outing-card__status quick-outing-card__status--${cycle.status}`}
+              >
+                {cycleStateLabel(cycle)}
+              </span>
               <div className="admin-row-buttons">
                 <Button variant="quiet" onClick={() => selectCycle(cycle.id)}>
-                  Ver movimientos
+                  Ver detalle
                 </Button>
                 <Button
                   variant="quiet"
@@ -337,29 +398,52 @@ export function QuickWorkspace({
           ))}
         </section>
       )}
-      <section className="admin-card">
-        <h2>{selectedId ? "Actividad de esta salida" : "Actividad reciente"}</h2>
-        {commands
-          .filter((c) => !selectedId || c.id === selectedId || c.dependency_id === selectedId)
-          .map((command) => (
-            <article className="admin-list-row" key={command.id}>
-              <div>
-                <strong>{operationCommandLabel(command.kind)}</strong>
-                <p>{operationCommandSummary(command.payload)}</p>
-                <p>{new Date(command.created_at).toLocaleString("es-PE")}</p>
-                <p role="status">
-                  {command.error_message
-                    ? `Requiere atención: ${command.error_message}`
-                    : command.status === "confirmed"
-                      ? "Confirmado"
-                      : "Guardado en este dispositivo · pendiente de confirmación"}
-                </p>
-                {command.error_message && (
-                  <Link to="/sincronizacion">Revisar el registro conservado</Link>
-                )}
-              </div>
-            </article>
-          ))}
+      <section className="quick-activity" aria-labelledby="quick-activity-title">
+        <div className="quick-section-heading">
+          <div>
+            <p>Registro cronológico</p>
+            <h2 id="quick-activity-title">
+              {selectedId ? "Actividad de esta salida" : "Actividad reciente"}
+            </h2>
+          </div>
+        </div>
+        {visibleCommands.length === 0 && (
+          <p className="quick-activity__empty">
+            Aquí aparecerá cada registro guardado durante el recorrido.
+          </p>
+        )}
+        {visibleCommands.slice(0, 8).map((command) => (
+          <article className="quick-activity-item" key={command.id}>
+            <span
+              aria-hidden="true"
+              className={`quick-activity-item__marker quick-activity-item__marker--${command.status}`}
+            />
+            <div className="quick-activity-item__body">
+              <strong>{operationCommandLabel(command.kind)}</strong>
+              <p>{operationCommandSummary(command.payload)}</p>
+            </div>
+            <div className="quick-activity-item__meta">
+              <time dateTime={command.created_at}>
+                {new Date(command.created_at).toLocaleString("es-PE", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </time>
+              <span role="status">
+                {command.error_message
+                  ? `Requiere atención: ${command.error_message}`
+                  : command.status === "confirmed"
+                    ? "Confirmado"
+                    : "Pendiente de confirmación"}
+              </span>
+              {command.error_message && (
+                <Link to="/sincronizacion">Revisar el registro conservado</Link>
+              )}
+            </div>
+          </article>
+        ))}
       </section>
     </section>
   );
