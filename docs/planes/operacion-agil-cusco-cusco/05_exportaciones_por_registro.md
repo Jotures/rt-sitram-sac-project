@@ -23,6 +23,8 @@ La pantalla, PDF y Excel comparten la misma estructura de presentación. Se reut
 
 ## Verificación
 
+Publicación por Git: código `bd6caa6`, deployment `dpl_8rRNhgNaFRkfHDaf1bwTY3dWHdkZ` Ready, alias productivo confirmado. Inicio, Salidas, Rendiciones y Viajes responden HTTP 200 con el cliente nuevo.
+
 - 309 pruebas web correctas, incluyendo cuentas positivas/negativas/cero, pagos parciales, rechazo de cuenta diferente/prueba/NaN, pendientes y libro XLSX reabierto con números y textos literales.
 - Ocho casos pgTAP con datos sintéticos y ROLLBACK: auditoría PDF/XLSX, aislamiento empresarial, rol conductor, anónimo, entidad inexistente, formato y digest inválidos.
 - Build, TypeScript, lint, formato y mapa comprobados. PDF sintético renderizado con Poppler para inspección de paginación.
