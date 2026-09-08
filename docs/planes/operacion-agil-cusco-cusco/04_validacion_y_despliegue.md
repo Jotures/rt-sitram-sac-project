@@ -40,10 +40,21 @@ RT-2026-0001 y su adelanto S/800 permanecen identificados, cancelados como prueb
 
 ## Publicación y recuperación
 
-La nueva versión del cliente se publica por Git master con Root Directory = implementation. El despliegue anterior dpl_HVV9xtCFrkAzssvYMdQQv1jNd2x8 no constituye evidencia de esta corrección general. Registrar commit, deployment y humo autenticado final aquí.
+Versión 0.2.0 publicada por Git master, commit 8cdaffb8bd6154b5f1d502c05882b19a9d2c3fa3, con Root Directory = implementation. Deployment dpl_6CJS55Yg6RQk6fvJot39x9iw8LwS, estado Ready, alias https://rt-sitram-centro-control.vercel.app, creado el 2026-09-07 a las 20:50:45 (UTC-5). GitHub confirmó éxito de Vercel. Se verificó el shell productivo rt-sitram-pwa-shell-7631e74783fc8bf2 y el activo app-DqbO7Gwk.js.
 
 Ante un fallo del circuito, detener la creación nueva desde el control de acceso existente, conservar filas/colas/archivos y publicar un cliente compatible. Corregir hacia delante cuando existan operaciones nuevas; no revertir destructivamente esquema ni borrar SQLite.
 
 ## Límites de aceptación
 
 Faltan las mediciones humanas de salida recurrente ≤30 s y rendición de hoja ≤2 min, además de Android físico. No se da por completada la auditoría pendiente, ni planilla, banca, detracción, guías integrales, mantenimiento preventivo, GPS u OCR. WhatsApp sigue disponible para procesos fuera del alcance.
+
+## Cierre verificado en producción
+
+- Autenticación QA correcta. Perfil muestra el interruptor general; funciona con teclado. Desactivarlo recupera Nuevo viaje completo y activarlo muestra Registrar salida desde esa misma entrada.
+- Inicio, Salidas, Adelantos, Gastos, Combustible y Cobranza cargan con el modo rápido. Rendición cerrada y archivo privado accesibles con permisos; viewport 390 px sin desbordamiento. No hubo errores JavaScript en el humo de producción.
+- Salida sintética e065b915-5c1d-4058-8270-4114884593cf: estado completed, rendición closed, saldo previo a pagos750, pagos reales QA750 y remanente0, una hoja privada. Se conservaron los registros originales tras reintentos.
+- QA desactivado al terminar: perfil inactivo, autenticación bloqueada y cero sesiones. Auditoría QA_ACCESS_DISABLED; la misma identidad ya no ve salidas por RLS. Cinco perfiles reales nuevamente comparados con el respaldo: ningún campo alterado.
+- Formato/mapa, typecheck, lint, 447 pruebas de código, 77 pgTAP revertidos y build correctos. El aviso de tamaño de chunks sigue como optimización fuera de este corte.
+- Evidencia local sintética: implementation/.local/operation-agile/release-profile.png, release-mobile.png, rendition-closed.png, offline-pending.png y offline-reopened.png. Respaldos y credenciales permanecen protegidos e ignorados por Git.
+
+No se afirma prueba en Android físico ni los tiempos humanos de digitación. La primera preparación del dispositivo/rendición requiere conexión para cargar sus datos; después conserva la hoja y fotos offline. La aceptación del dueño sobre operaciones reales y los procesos fuera del corte continúan según el manual.
