@@ -15,6 +15,7 @@ import type {
 } from "../admin-ui/admin-data";
 import { MoreDetails } from "./OperationModeProvider";
 import { CycleCaptureChannel } from "./CycleCaptureChannel";
+import { CycleReportPanel } from "../reports/CycleReportPanel";
 import {
   enqueueOperationCommand,
   makeOperationCommand,
@@ -328,6 +329,7 @@ export function QuickWorkspace({
             context={context}
           />
           <CycleCaptureChannel cycleId={selected.id} />
+          <CycleReportPanel key={selected.id} gateway={gateway} cycleId={selected.id} />
         </section>
       )}
       {!compact && (

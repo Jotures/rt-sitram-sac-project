@@ -25,6 +25,8 @@ import { MoreDetails, useOperationMode } from "../operation-mode/OperationModePr
 import { QuickWorkspace } from "../operation-mode/QuickWorkspace";
 import { CycleRendition } from "../operation-mode/CycleRendition";
 import { CycleCosts } from "../operation-mode/CycleCosts";
+import { CycleReportPanel } from "../reports/CycleReportPanel";
+import { TripReportPanel, LegacySettlementReportPanel } from "../reports/RecordReportPanels";
 import { GpsContextCard } from "../gps-context/GpsContextCard";
 import { GpsFleetExceptionsCard } from "../gps-context/GpsFleetExceptionsCard";
 import { getSupabaseClient } from "../../lib/supabase";
@@ -3777,6 +3779,7 @@ function OperationalCycleDetailContent({
   const captureOptions = useResource(captureOptionsLoader);
   return (
     <>
+      <CycleReportPanel key={detail.cycle.id} gateway={gateway} cycleId={detail.cycle.id} />
       <section className="admin-card admin-detail-card admin-list-card">
         <div className="admin-card__heading">
           <div>
@@ -7628,6 +7631,11 @@ function SettlementDetailPage({
             <CycleRendition cycleId={detail.cycle.id} />
           ) : (
             <div className="admin-master-detail">
+              <LegacySettlementReportPanel
+                key={detail.settlement.id}
+                gateway={gateway}
+                settlementId={detail.settlement.id}
+              />
               <section className="admin-card admin-detail-card">
                 <div className="admin-card__heading">
                   <div>
@@ -8267,6 +8275,7 @@ function TripDetailView({
         </dl>
       </section>
       <TripDetailNavigation current={routeId} tripId={detail.trip.id} />
+      <TripReportPanel key={detail.trip.id} gateway={gateway} tripId={detail.trip.id} />
       <TripDetailActions detail={detail} />
       <CommercialTermsCard
         detail={detail}

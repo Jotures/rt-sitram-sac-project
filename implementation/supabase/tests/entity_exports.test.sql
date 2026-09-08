@@ -1,0 +1,37 @@
+begin;
+set local lock_timeout='3s';
+set local statement_timeout='20s';
+set local search_path=extensions,public,auth;
+select no_plan();
+insert into public.companies(id,legal_name) values('e8100000-0000-4000-8000-000000000001','EXPORT QA ROLLBACK');
+insert into auth.users(id,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,aud,role)
+values('e8200000-0000-4000-8000-000000000001','export-qa@example.test','',now(),'{}','{}','authenticated','authenticated');
+insert into public.profiles(id,company_id,display_name,role) values('e8200000-0000-4000-8000-000000000001','e8100000-0000-4000-8000-000000000001','Export QA','management');
+insert into public.vehicles(id,company_id,plate) values('e8400000-0000-4000-8000-000000000001','e8100000-0000-4000-8000-000000000001','EX-QA-01');
+insert into public.drivers(id,company_id,display_name) values('e8500000-0000-4000-8000-000000000001','e8100000-0000-4000-8000-000000000001','Export driver');
+insert into public.operational_cycles(id,company_id,code,status,created_by,vehicle_id,primary_driver_id) values('e8300000-0000-4000-8000-000000000001','e8100000-0000-4000-8000-000000000001','EXPORT-QA','planned','e8200000-0000-4000-8000-000000000001','e8400000-0000-4000-8000-000000000001','e8500000-0000-4000-8000-000000000001');
+select ok(not has_function_privilege('anon','public.record_entity_export(text,uuid,text,timestamptz,text)','execute'),'anonymous export denied');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e8200000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"sub":"e8200000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+select lives_ok($q$ select public.record_entity_export('cycle','e8300000-0000-4000-8000-000000000001','xlsx',now(),repeat('a',64)) $q$,'own cycle Excel export audited');
+select lives_ok($q$ select public.record_entity_export('cycle_settlement','e8300000-0000-4000-8000-000000000001','pdf',now(),repeat('b',64)) $q$,'own cycle PDF export audited');
+select throws_ok($q$ select public.record_entity_export('cycle','e8300000-0000-4000-8000-000000000002','pdf',now(),repeat('a',64)) $q$,'42501',null,'unavailable entity denied');
+select throws_ok($q$ select public.record_entity_export('cycle','e8300000-0000-4000-8000-000000000001','exe',now(),repeat('a',64)) $q$,'22023',null,'invalid format denied');
+select throws_ok($q$ select public.record_entity_export('cycle','e8300000-0000-4000-8000-000000000001','pdf',now(),'invalid') $q$,'22023',null,'invalid digest denied');
+reset role;
+insert into public.companies(id,legal_name) values('e8100000-0000-4000-8000-000000000002','EXPORT OTHER QA ROLLBACK');
+insert into auth.users(id,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,aud,role)
+values('e8200000-0000-4000-8000-000000000002','export-other-qa@example.test','',now(),'{}','{}','authenticated','authenticated');
+insert into public.profiles(id,company_id,display_name,role) values('e8200000-0000-4000-8000-000000000002','e8100000-0000-4000-8000-000000000002','Other export QA','management');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e8200000-0000-4000-8000-000000000002',true);
+select set_config('request.jwt.claims','{"sub":"e8200000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+select throws_ok($q$ select public.record_entity_export('cycle','e8300000-0000-4000-8000-000000000001','pdf',now(),repeat('a',64)) $q$,'42501',null,'other company export denied');
+reset role;
+update public.profiles set role='driver' where id='e8200000-0000-4000-8000-000000000002';
+set local role authenticated;
+select throws_ok($q$ select public.record_entity_export('cycle','e8300000-0000-4000-8000-000000000001','pdf',now(),repeat('a',64)) $q$,'42501',null,'driver financial export denied');
+reset role;
+select * from finish();
+rollback;

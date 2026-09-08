@@ -18,8 +18,11 @@ import {
 } from "./operation-command";
 import { MoreDetails } from "./OperationModeProvider";
 import { createSupabaseAdminDataGateway } from "../admin-ui/admin-data";
+import { CycleReportPanel } from "../reports/CycleReportPanel";
 
 interface Movement {
+  readonly incurred_at?: string;
+  readonly fueled_at?: string;
   readonly version: number;
   readonly id: string;
   readonly category_id?: string;
@@ -31,8 +34,17 @@ interface Movement {
   readonly description?: string | null;
   readonly payment_source?: string;
 }
-interface Snapshot {
-  readonly cycle: { id: string; code: string; primary_driver_id: string; status: string };
+export interface Snapshot {
+  readonly cycle: {
+    id: string;
+    code: string;
+    primary_driver_id: string;
+    status: string;
+    started_at?: string | null;
+    returned_at?: string | null;
+    notes?: string | null;
+    is_test?: boolean;
+  };
   readonly settlement: { id: string; status: string } | null;
   readonly summary: {
     lines: readonly RenditionLineInput[];
@@ -79,6 +91,9 @@ async function call<T>(name: string, args: Record<string, unknown>): Promise<T> 
   if (result.error) throw new Error(result.error.message);
   return result.data as T;
 }
+export function loadRenditionSnapshot(cycleId: string): Promise<Snapshot> {
+  return call<Snapshot>("get_cycle_rendition", { p_cycle_id: cycleId });
+}
 const money = (value: number): string =>
   new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(value);
 const amountOf = (row: Movement): number => Number(row.amount ?? row.total_amount ?? 0);
@@ -106,6 +121,7 @@ function initialLines(data: Snapshot): readonly RenditionLineInput[] {
 }
 
 export function CycleRendition({ cycleId }: { readonly cycleId: string }): React.JSX.Element {
+  const reportClient = getSupabaseClient();
   const identity = useIdentity().state;
   const database = usePowerSync();
   const online = useNetworkStatus() === "ONLINE";
@@ -299,6 +315,14 @@ export function CycleRendition({ cycleId }: { readonly cycleId: string }): React
           <p>Una rendición por toda la salida Cusco–Cusco.</p>
         </div>
       </header>
+      {reportClient && (
+        <CycleReportPanel
+          key={cycleId}
+          gateway={createSupabaseAdminDataGateway(reportClient)}
+          cycleId={cycleId}
+          settlementOnly
+        />
+      )}
       {error && (
         <p role="alert" className="admin-notice">
           {error}

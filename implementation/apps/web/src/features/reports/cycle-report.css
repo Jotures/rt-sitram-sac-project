@@ -1,0 +1,43 @@
+.cycle-report-panel {
+  min-width: 0;
+}
+.cycle-report-preview {
+  padding: 1rem;
+  border: 1px solid #d3ddd8;
+  border-radius: 1rem;
+  background: #fff;
+  color: #17313d;
+}
+.cycle-report-preview > p {
+  color: #526b76;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.cycle-report-preview details {
+  margin-block: 1rem;
+}
+.cycle-report-preview summary {
+  padding: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: #e8f1ed;
+  border-radius: 0.5rem;
+}
+.cycle-report-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.cycle-report-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.cycle-report-table th,
+.cycle-report-table td {
+  padding: 0.7rem;
+  border-bottom: 1px solid #dbe4df;
+  text-align: left;
+  vertical-align: top;
+  min-width: 8rem;
+  overflow-wrap: anywhere;
+}

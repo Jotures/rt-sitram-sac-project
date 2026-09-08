@@ -20,6 +20,7 @@
     "@rt-sitram/domain": "workspace:*",
     "@rt-sitram/shared": "workspace:*",
     "@supabase/supabase-js": "2.110.8",
+    "exceljs": "4.4.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-is": "19.2.8",
