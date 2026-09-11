@@ -51,7 +51,11 @@ Continúa SESSION-20260828-011 y extiende DEC-049 mediante DEC-050.
 Pruebas de prioridades, fuentes fallidas, asociaciones, frases/fechas, unidades,
 muestra mínima, pagos parciales/anulados y consistencia de cuentas. Prueba visual
 local con adaptadores ficticios; la vista de prueba queda fuera del código publicado.
-Resultados finales y despliegue en el log de sesión.
+345 pruebas web correctas, TypeScript/lint/formato/mapa/build correctos. Publicado
+desde `4d264f3`, Vercel Ready y alias confirmado, siete rutas HTTP 200 y humo
+autenticado de Inicio y Buscar sin errores de consola. Las pruebas con movimientos
+de cuenta y guardados se hicieron solo con adaptadores ficticios. Detalle en el log
+de sesión.
 
 Una regresión de presentación se recupera volviendo al despliegue anterior de
 Vercel. No requiere revertir datos. Conservar colas, OPFS y borradores del usuario.
