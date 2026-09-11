@@ -52,3 +52,4 @@ Registro canónico de decisiones duraderas. Los logs rotan en bloques determinis
 | DEC-046 | Arranque productivo controlado del núcleo operativo | Accepted | 2026-09-03 | SESSION-20260828-011 | [DEC-046-050.md](DEC-046-050.md) | Puesta en marcha, operación, finanzas básicas, offline y límites de alcance |
 | DEC-047 | Salida Cusco–Cusco y rendición conjunta | Accepted | 2026-09-06 | SESSION-20260828-011 | [DEC-046-050.md](DEC-046-050.md) | Salidas, servicios, fondos, combustible y rendiciones |
 | DEC-048 | Modo general y cuenta del conductor sin duplicación | Accepted | 2026-09-07 | SESSION-20260828-011 | [DEC-046-050.md](DEC-046-050.md) | Experiencia global, oficina offline, conciliación de hojas y pagos reales |
+| DEC-049 | Navegación por responsabilidad y asistencia contextual | Accepted | 2026-09-11 | SESSION-20260828-011 | [DEC-046-050.md](DEC-046-050.md) | Inicio, Salidas, Finanzas, búsqueda y captura rápida |

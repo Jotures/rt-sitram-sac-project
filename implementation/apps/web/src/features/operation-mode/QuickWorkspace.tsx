@@ -1,10 +1,21 @@
-import { usePowerSync, useQuery } from "@powersync/react";
+import { usePowerSync } from "@powersync/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/primitives/Button";
 import { Icon } from "../../components/primitives/Icon";
 import { powerSyncIdentityStore } from "../../lib/powersync/identity-store";
-import { operationActivitySql } from "../../lib/powersync/operation-journal";
+import {
+  actionFromSearch,
+  cycleIdentity,
+  cycleNextStep,
+  cycleStateLabel,
+  matchesSearch,
+  outingPath,
+  possibleDuplicate,
+  PossibleDuplicateError,
+  type QuickAction,
+} from "./workspace-model";
+import { useOperationActivity } from "./useOperationActivity";
 import { getOrCreateDeviceId } from "../driver-ui/device-and-evidence";
 import type {
   AdminDataGateway,
@@ -27,17 +38,6 @@ import {
   type ServiceInput,
 } from "./operation-command";
 
-type QuickAction = "departure" | "service" | "advance" | "expense" | "fuel" | "return" | "start";
-interface LocalCommand {
-  readonly id: string;
-  readonly kind: string;
-  readonly payload: string;
-  readonly status: string;
-  readonly dependency_id: string | null;
-  readonly created_at: string;
-  readonly error_message: string | null;
-}
-
 function nowInput(): string {
   const d = new Date();
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -59,20 +59,6 @@ function occurredAt(form: FormData): string {
   return new Date(text(form, "occurred_at")).toISOString();
 }
 
-function operationDateLabel(value = new Date()): string {
-  return new Intl.DateTimeFormat("es-PE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(value);
-}
-
-function cycleStateLabel(cycle: Pick<AdminOperationalCycleRow, "status" | "returnedAt">): string {
-  if (cycle.status === "completed") return "Regresó a Cusco";
-  if (cycle.status === "planned") return "Programada";
-  if (cycle.returnedAt) return "Regreso registrado";
-  return "En recorrido";
-}
 function service(form: FormData): ServiceInput {
   return {
     client_id: text(form, "client_id"),
@@ -111,73 +97,126 @@ export function QuickWorkspace({
   context,
   initialAction,
   compact = false,
+  scheduledOnly = false,
 }: {
   readonly gateway: AdminDataGateway;
   readonly context: AdminWriteContext;
   readonly initialAction?: QuickAction | undefined;
   readonly compact?: boolean;
+  readonly scheduledOnly?: boolean;
 }): React.JSX.Element {
   const database = usePowerSync();
+  const navigate = useNavigate();
+  const workspaceRef = useRef<HTMLElement>(null);
   const [search, setSearch] = useSearchParams();
   const [cycles, setCycles] = useState<readonly AdminOperationalCycleRow[]>([]);
   const [options, setOptions] = useState<AdminTripSetupOptions | null>(null);
   const [categories, setCategories] = useState<readonly AdminOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [action, setAction] = useState<QuickAction | null>(
-    initialAction ?? (search.get("accion") === "servicio" ? "service" : null),
-  );
+  const [formError, setFormError] = useState<string | null>(null);
   const [repeat, setRepeat] = useState<AdminOperationalCycleRow | null>(null);
-  const { data: commands } = useQuery<LocalCommand>(
-    `SELECT o.*, d.error_message FROM (${operationActivitySql}) o
-    LEFT JOIN upload_dead_letters d ON d.source_table = 'operation_commands' AND d.source_record_id = o.id AND d.status = 'pending_review'
-    WHERE o.company_id = ? ORDER BY o.created_at DESC LIMIT 80`,
-    [context.companyId],
-  );
+  const [limit, setLimit] = useState(20);
+  const commands = useOperationActivity(context.companyId);
   const confirmation = commands.map((c) => `${c.id}:${c.status}`).join(",");
+  const action = compact
+    ? (initialAction ?? null)
+    : (actionFromSearch(search) ?? initialAction ?? null);
   const reload = useCallback(async () => {
     try {
-      const [nextCycles, nextOptions, capture] = await Promise.all([
-        gateway.listOperationalCycles(),
-        gateway.loadTripSetupOptions(),
-        gateway.loadStaffCaptureOptions(),
-      ]);
-      setCycles(nextCycles);
-      setOptions(nextOptions);
-      setCategories(capture.expenseCategories);
+      setCycles(await gateway.listOperationalCycles());
       setError(null);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No se pudieron preparar los datos de la operación.",
-      );
+    } catch {
+      setError("No se pudieron consultar las salidas. Vuelve a intentarlo.");
+    } finally {
+      setLoading(false);
     }
   }, [gateway]);
   useEffect(() => {
     void reload();
   }, [reload, confirmation]);
-
+  useEffect(() => {
+    let current = true;
+    setFormError(null);
+    if (action === "departure" || action === "service") {
+      void gateway
+        .loadTripSetupOptions()
+        .then((data) => {
+          if (current) setOptions(data);
+        })
+        .catch(() => {
+          if (current)
+            setFormError("No se pudieron preparar las unidades, conductores y clientes.");
+        });
+    }
+    if (action === "expense") {
+      void gateway
+        .loadStaffCaptureOptions()
+        .then((data) => {
+          if (current) setCategories(data.expenseCategories);
+        })
+        .catch(() => {
+          if (current) setFormError("No se pudieron consultar las categorías de gasto.");
+        });
+    }
+    return () => {
+      current = false;
+    };
+  }, [gateway, action]);
   const pendingCycles = commands.filter(
     (c) =>
       c.kind === "departure" &&
       c.status !== "confirmed" &&
       !cycles.some((cycle) => cycle.id === c.id),
   );
-  const selectedId = search.get("salida") ?? "";
+  const currentCycles = cycles.filter(
+    (cycle) => (cycle.status === "active" || cycle.status === "planned") && !cycle.returnedAt,
+  );
+  // An explicit choice always wins; only prefill when the current context is unambiguous.
+  const suggestedId =
+    action && action !== "departure" && currentCycles.length === 1 && pendingCycles.length === 0
+      ? (currentCycles[0]?.id ?? "")
+      : "";
+  const selectedId = search.get("salida") ?? suggestedId;
+  useEffect(() => {
+    if (!compact && (selectedId || action))
+      workspaceRef.current?.scrollIntoView({ block: "start" });
+  }, [compact, selectedId, action]);
   const selected = cycles.find((cycle) => cycle.id === selectedId);
   const pendingSelected = pendingCycles.find((cycle) => cycle.id === selectedId);
-  const activeCycles = cycles.filter((cycle) => cycle.status === "active");
   const visibleCommands = commands.filter(
-    (command) => !selectedId || command.id === selectedId || command.dependency_id === selectedId,
+    (command) =>
+      (!selectedId || command.id === selectedId || command.dependency_id === selectedId) &&
+      (!compact || command.kind === action),
   );
-  const selectCycle = (id: string): void => {
+  const updateSearch = (name: string, value: string): void => {
     setSearch((previous) => {
       const next = new URLSearchParams(previous);
-      next.set("salida", id);
+      next.set(name, value);
       return next;
     });
   };
-  const save = async (body: OperationCommandBody, id: string): Promise<void> => {
+  const selectCycle = (id: string): void => updateSearch("salida", id);
+  const chooseAction = (next: QuickAction): void => {
+    setSearch((previous) => {
+      const params = new URLSearchParams(previous);
+      const actionParam = new URLSearchParams(outingPath(undefined, next).split("?")[1]).get(
+        "accion",
+      );
+      params.set("accion", actionParam ?? "");
+      if (next === "departure") params.delete("salida");
+      else if (selectedId) params.set("salida", selectedId);
+      return params;
+    });
+    if (next === "departure") setRepeat(null);
+  };
+  const save = async (
+    body: OperationCommandBody,
+    id: string,
+    duplicateConfirmed = false,
+  ): Promise<void> => {
+    const duplicate = possibleDuplicate(body, id, commands);
+    if (duplicate && !duplicateConfirmed) throw new PossibleDuplicateError(duplicate);
     await database.init();
     if (powerSyncIdentityStore.read() !== context.profileId)
       throw new Error(
@@ -187,140 +226,183 @@ export function QuickWorkspace({
       ...context,
       sourceDeviceId: getOrCreateDeviceId(),
     });
-    if (body.kind === "departure") selectCycle(id);
+    if (body.kind === "departure") navigate(outingPath(id));
   };
-  const chooseAction = (next: QuickAction): void => {
-    setAction(next);
-    if (next === "departure") setRepeat(null);
-  };
+  const status = search.get("estado") ?? (scheduledOnly ? "planned" : "");
+  const query = search.get("q") ?? "";
+  const filteredCycles = cycles.filter(
+    (cycle) =>
+      (!status ||
+        (status === "returned"
+          ? Boolean(cycle.returnedAt) || cycle.status === "completed"
+          : cycle.status === status && (status !== "active" || !cycle.returnedAt))) &&
+      matchesSearch(
+        `${cycle.title} ${cycle.description} ${cycle.notes ?? ""} ${cycle.date ?? ""} ${cycle.date ? new Date(cycle.date).toLocaleDateString("es-PE") : ""} ${cycleStateLabel(cycle)}`,
+        query,
+      ),
+  );
+  const canRecord = selected?.status !== "cancelled";
   return (
-    <section className="quick-workspace" aria-label="Registro de operaciones">
+    <section
+      ref={workspaceRef}
+      className="quick-workspace"
+      aria-label={compact ? "Registrar movimiento" : "Salidas"}
+    >
       {!compact && (
-        <header className="quick-dashboard-header">
-          <div className="quick-dashboard-header__copy">
-            <p className="quick-dashboard-header__date">
-              <Icon name="calendar" size={16} /> {operationDateLabel()}
-            </p>
-            <h1>Operación del día</h1>
-            <p>
-              Registra la salida, el dinero y los gastos del recorrido. Los servicios se agregan
-              cuando ya estén confirmados.
-            </p>
+        <header className="operation-page-heading">
+          <div>
+            <h1>{scheduledOnly ? "Salidas programadas" : "Salidas"}</h1>
+            <p>Un recorrido de la unidad, desde la partida hasta el regreso a Cusco.</p>
           </div>
-          <div className="quick-dashboard-header__status" aria-label="Estado del día">
-            <span>{activeCycles.length}</span>
-            <small>
-              {activeCycles.length === 1 ? "salida en recorrido" : "salidas en recorrido"}
-            </small>
-          </div>
+          {selectedId || action ? (
+            <Link className="button button--quiet" to={outingPath()}>
+              Volver a salidas
+            </Link>
+          ) : (
+            <Button icon="truck" onClick={() => chooseAction("departure")}>
+              Registrar salida
+            </Button>
+          )}
         </header>
       )}
       {error && (
         <p className="admin-notice" role="alert">
-          {error}
+          {error}{" "}
           <Button variant="quiet" onClick={() => void reload()}>
             Volver a cargar
           </Button>
         </p>
       )}
-      <section className="quick-action-panel" aria-labelledby="quick-action-title">
-        <div className="quick-action-panel__heading">
-          <div>
-            <p>Lo primero</p>
-            <h2 id="quick-action-title">¿Qué quieres registrar?</h2>
-          </div>
-          <span>Datos esenciales</span>
-        </div>
-        <div className="quick-action-panel__actions" aria-label="Acciones frecuentes">
-          <Button
-            className="quick-action-panel__primary"
-            icon="truck"
-            onClick={() => chooseAction("departure")}
-          >
-            Registrar salida
-          </Button>
-          <Button variant="secondary" icon="money" onClick={() => chooseAction("advance")}>
-            Entregar dinero
-          </Button>
-          <Button variant="secondary" icon="file" onClick={() => chooseAction("expense")}>
-            Registrar gasto
-          </Button>
-          <Button variant="secondary" icon="fuel" onClick={() => chooseAction("fuel")}>
-            Combustible
-          </Button>
-        </div>
-      </section>
+      {loading && <p role="status">Consultando salidas…</p>}
+      {action === "departure" && (
+        <section className="admin-card">
+          {options ? (
+            <DepartureForm
+              key={repeat?.id ?? "new"}
+              context={context}
+              options={options}
+              repeat={repeat}
+              onSave={save}
+            />
+          ) : (
+            <p role="status">Preparando el formulario…</p>
+          )}
+        </section>
+      )}
       {action !== null && action !== "departure" && (
-        <label className="admin-field">
-          <span>Salida de la unidad</span>
-          <select value={selectedId} onChange={(event) => selectCycle(event.target.value)} required>
-            <option value="">Selecciona la salida</option>
-            {cycles
-              .filter((cycle) => cycle.status !== "cancelled")
-              .map((cycle) => (
+        <section className="admin-card operation-capture-context">
+          <label className="admin-field">
+            <span>Salida de la unidad</span>
+            <select
+              value={selectedId}
+              onChange={(event) => selectCycle(event.target.value)}
+              required
+            >
+              <option value="">Selecciona la salida</option>
+              {cycles
+                .filter((cycle) => cycle.status !== "cancelled")
+                .map((cycle) => (
+                  <option key={cycle.id} value={cycle.id}>
+                    {cycle.title} · {cycle.description} · {cycleStateLabel(cycle)}
+                  </option>
+                ))}
+              {pendingCycles.map((cycle) => (
                 <option key={cycle.id} value={cycle.id}>
-                  {cycle.title} · {cycle.description}
+                  Salida guardada en este dispositivo · {cycle.id.slice(0, 6)}
                 </option>
               ))}
-            {pendingCycles.map((cycle) => (
-              <option key={cycle.id} value={cycle.id}>
-                Salida guardada en este dispositivo · {cycle.id.slice(0, 6)}
-              </option>
-            ))}
-          </select>
-        </label>
+            </select>
+          </label>
+          {selected && (
+            <p className="operation-context-note">
+              {selected.description} · {cycleStateLabel(selected)}
+            </p>
+          )}
+          {pendingSelected && (
+            <p className="operation-context-note">
+              Salida guardada aquí; todavía requiere confirmación.
+            </p>
+          )}
+          {!loading && cycles.length === 0 && pendingCycles.length === 0 && (
+            <p>
+              Primero necesitas una salida.{" "}
+              <Link to={outingPath(undefined, "departure")}>Registrar salida</Link>
+            </p>
+          )}
+          {selectedId && !selected && !pendingSelected && !loading && (
+            <p role="alert">Esta salida no está disponible. Selecciona una de la lista.</p>
+          )}
+          {selected?.status === "cancelled" && (
+            <p>La salida está cancelada. Puedes consultar su historial.</p>
+          )}
+          {selectedId && (selected || pendingSelected) && canRecord && (
+            <MovementForm
+              key={`${selectedId}:${action}`}
+              context={context}
+              cycleId={selectedId}
+              action={action}
+              options={options}
+              categories={categories}
+              onSave={save}
+            />
+          )}
+        </section>
       )}
-      {action === "departure" && options !== null && (
-        <DepartureForm
-          key={repeat?.id ?? "new"}
-          context={context}
-          options={options}
-          repeat={repeat}
-          onSave={save}
-        />
+      {formError && (
+        <p className="admin-notice" role="alert">
+          {formError}
+        </p>
       )}
-      {action !== null && action !== "departure" && selectedId && (selected || pendingSelected) && (
-        <MovementForm
-          key={`${selectedId}:${action}`}
-          context={context}
-          cycleId={selectedId}
-          action={action}
-          options={options}
-          categories={categories}
-          onSave={save}
-        />
-      )}
-      {selected !== undefined && (
+      {!compact && selected && action !== "departure" && (
         <section className="admin-card quick-cycle-detail">
           <div className="admin-card__heading quick-cycle-detail__heading">
             <div>
-              <p className="quick-cycle-detail__eyebrow">Salida seleccionada</p>
-              <h2>{selected.title}</h2>
-              <p>{selected.description}</p>
+              <h2>{cycleIdentity(selected)}</h2>
+              <p>
+                {selected.notes ? `${selected.notes} · ` : ""}
+                {selected.title}
+              </p>
             </div>
             <span>{cycleStateLabel(selected)}</span>
           </div>
-          <div className="operation-quick-actions">
-            {selected.status === "planned" && (
-              <Button onClick={() => chooseAction("start")}>Registrar partida</Button>
-            )}
-            {selected.status === "active" && !selected.returnedAt && (
-              <Button onClick={() => chooseAction("return")}>Registrar regreso a Cusco</Button>
-            )}
-            {(selected.status === "active" || selected.status === "planned") &&
-              !selected.returnedAt && (
-                <Button variant="quiet" onClick={() => chooseAction("service")}>
-                  Agregar servicio
-                </Button>
+          {canRecord && (
+            <div className="operation-quick-actions" aria-label="Acciones de esta salida">
+              {selected.status === "planned" && (
+                <Button onClick={() => chooseAction("start")}>Registrar partida</Button>
               )}
-            {selected.primaryDriverId && (
-              <OpenSettlement
-                gateway={gateway}
-                cycleId={selected.id}
-                driverId={selected.primaryDriverId}
-              />
-            )}
-          </div>
+              {selected.status === "active" && !selected.returnedAt && (
+                <Button onClick={() => chooseAction("return")}>Registrar regreso a Cusco</Button>
+              )}
+              <Button variant="secondary" icon="money" onClick={() => chooseAction("advance")}>
+                Entregar dinero
+              </Button>
+              <Button variant="secondary" icon="file" onClick={() => chooseAction("expense")}>
+                Registrar gasto
+              </Button>
+              <Button variant="secondary" icon="fuel" onClick={() => chooseAction("fuel")}>
+                Registrar combustible
+              </Button>
+              {(selected.status === "active" || selected.status === "planned") &&
+                !selected.returnedAt && (
+                  <Button variant="quiet" onClick={() => chooseAction("service")}>
+                    Agregar servicio
+                  </Button>
+                )}
+              {selected.primaryDriverId && (
+                <OpenSettlement
+                  gateway={gateway}
+                  cycleId={selected.id}
+                  driverId={selected.primaryDriverId}
+                />
+              )}
+            </div>
+          )}
+          {(selected.returnedAt || selected.status === "completed") && (
+            <p className="operation-context-note">
+              El regreso y la cuenta se revisan por separado. Consulta los servicios y la rendición
+              de esta salida.
+            </p>
+          )}
           <CycleServices
             gateway={gateway}
             cycleId={selected.id}
@@ -328,39 +410,80 @@ export function QuickWorkspace({
             onSave={save}
             context={context}
           />
-          <CycleCaptureChannel cycleId={selected.id} />
-          <CycleReportPanel key={selected.id} gateway={gateway} cycleId={selected.id} />
+          <MoreDetails label="Cuenta, documentos y opciones de la salida">
+            <CycleCaptureChannel cycleId={selected.id} />
+            <CycleReportPanel key={selected.id} gateway={gateway} cycleId={selected.id} />
+          </MoreDetails>
         </section>
       )}
-      {!compact && (
+      {!compact && action !== "departure" && (!selectedId || pendingSelected) && (
         <section className="quick-outings" aria-labelledby="quick-outings-title">
           <div className="quick-section-heading">
-            <div>
-              <p>Vista rápida</p>
-              <h2 id="quick-outings-title">Salidas de la unidad</h2>
-            </div>
-            <span>{cycles.length} registradas</span>
+            <h2 id="quick-outings-title">{selected ? "Otras salidas" : "Salidas registradas"}</h2>
+            <span>{filteredCycles.length}</span>
           </div>
-          {cycles.length === 0 && pendingCycles.length === 0 && (
-            <p className="quick-outings__empty">
-              Todavía no hay salidas. Puedes registrar una sin conocer el cliente o el primer flete.
-            </p>
-          )}
+          <div className="operation-list-filters">
+            <label className="admin-field">
+              <span>Buscar salida</span>
+              <input
+                type="search"
+                value={query}
+                placeholder="Placa, conductor, fecha o recorrido"
+                onChange={(event) => {
+                  updateSearch("q", event.target.value);
+                  setLimit(20);
+                }}
+              />
+            </label>
+            <label className="admin-field">
+              <span>Estado</span>
+              <select
+                value={status}
+                onChange={(event) => {
+                  updateSearch("estado", event.target.value);
+                  setLimit(20);
+                }}
+              >
+                <option value="">Todas</option>
+                <option value="active">En recorrido</option>
+                <option value="planned">Programadas</option>
+                <option value="returned">Con regreso registrado</option>
+                <option value="cancelled">Canceladas</option>
+              </select>
+            </label>
+          </div>
           {pendingCycles.map((cycle) => (
             <article className="quick-outing-card quick-outing-card--pending" key={cycle.id}>
               <div>
                 <strong>Salida por confirmar</strong>
-                <p>
-                  {cycle.error_message ??
-                    "Guardado en este dispositivo · pendiente de confirmación"}
-                </p>
+                <p>{cycle.error_message ?? "Guardada en este dispositivo"}</p>
               </div>
               <Button variant="secondary" onClick={() => selectCycle(cycle.id)}>
                 Ver salida
               </Button>
             </article>
           ))}
-          {cycles.slice(0, 6).map((cycle) => (
+          {pendingSelected && !action && (
+            <div className="operation-quick-actions">
+              <Button variant="secondary" onClick={() => chooseAction("advance")}>
+                Entregar dinero
+              </Button>
+              <Button variant="secondary" onClick={() => chooseAction("expense")}>
+                Registrar gasto
+              </Button>
+              <Button variant="secondary" onClick={() => chooseAction("fuel")}>
+                Registrar combustible
+              </Button>
+            </div>
+          )}
+          {!loading && !error && filteredCycles.length === 0 && (
+            <p className="quick-outings__empty">
+              {cycles.length === 0
+                ? "Todavía no hay salidas registradas. Puedes registrar una sin conocer el cliente o el primer flete."
+                : "No hay salidas con estos filtros."}
+            </p>
+          )}
+          {filteredCycles.slice(0, limit).map((cycle) => (
             <article className="quick-outing-card" key={cycle.id}>
               <div className="quick-outing-card__date">
                 <Icon name="calendar" size={17} />
@@ -370,12 +493,15 @@ export function QuickWorkspace({
                         day: "numeric",
                         month: "short",
                       })
-                    : "Fecha pendiente"}
+                    : "Sin fecha"}
                 </span>
               </div>
               <div className="quick-outing-card__main">
-                <strong>{cycle.title}</strong>
-                <p>{cycle.description}</p>
+                <strong>{cycleIdentity(cycle)}</strong>
+                <p>
+                  {cycle.notes ? `${cycle.notes} · ` : ""}
+                  {cycle.title}
+                </p>
               </div>
               <span
                 className={`quick-outing-card__status quick-outing-card__status--${cycle.status}`}
@@ -383,14 +509,17 @@ export function QuickWorkspace({
                 {cycleStateLabel(cycle)}
               </span>
               <div className="admin-row-buttons">
-                <Button variant="quiet" onClick={() => selectCycle(cycle.id)}>
-                  Ver detalle
-                </Button>
+                <Link
+                  className="button button--secondary"
+                  to={outingPath(cycle.id, cycleNextStep(cycle).action ?? undefined)}
+                >
+                  {cycleNextStep(cycle).label}
+                </Link>
                 <Button
                   variant="quiet"
                   onClick={() => {
+                    chooseAction("departure");
                     setRepeat(cycle);
-                    setAction("departure");
                   }}
                 >
                   Repetir salida
@@ -398,59 +527,96 @@ export function QuickWorkspace({
               </div>
             </article>
           ))}
+          {filteredCycles.length > limit && (
+            <Button variant="quiet" onClick={() => setLimit((value) => value + 20)}>
+              Mostrar más salidas
+            </Button>
+          )}
         </section>
       )}
-      <section className="quick-activity" aria-labelledby="quick-activity-title">
-        <div className="quick-section-heading">
-          <div>
-            <p>Registro cronológico</p>
+      {visibleCommands.length > 0 && (
+        <section className="quick-activity" aria-labelledby="quick-activity-title">
+          <div className="quick-section-heading">
             <h2 id="quick-activity-title">
               {selectedId ? "Actividad de esta salida" : "Actividad reciente"}
             </h2>
           </div>
-        </div>
-        {visibleCommands.length === 0 && (
-          <p className="quick-activity__empty">
-            Aquí aparecerá cada registro guardado durante el recorrido.
-          </p>
-        )}
-        {visibleCommands.slice(0, 8).map((command) => (
-          <article className="quick-activity-item" key={command.id}>
-            <span
-              aria-hidden="true"
-              className={`quick-activity-item__marker quick-activity-item__marker--${command.status}`}
-            />
-            <div className="quick-activity-item__body">
-              <strong>{operationCommandLabel(command.kind)}</strong>
-              <p>{operationCommandSummary(command.payload)}</p>
-            </div>
-            <div className="quick-activity-item__meta">
-              <time dateTime={command.created_at}>
-                {new Date(command.created_at).toLocaleString("es-PE", {
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </time>
-              <span role="status">
-                {command.error_message
-                  ? `Requiere atención: ${command.error_message}`
-                  : command.status === "confirmed"
-                    ? "Confirmado"
-                    : "Pendiente de confirmación"}
-              </span>
-              {command.error_message && (
-                <Link to="/sincronizacion">Revisar el registro conservado</Link>
-              )}
-            </div>
-          </article>
-        ))}
-      </section>
+          {visibleCommands.slice(0, 8).map((command) => (
+            <article className="quick-activity-item" key={command.id}>
+              <span
+                aria-hidden="true"
+                className={`quick-activity-item__marker quick-activity-item__marker--${command.status}`}
+              />
+              <div className="quick-activity-item__body">
+                <strong>{operationCommandLabel(command.kind)}</strong>
+                <p>{operationCommandSummary(command.payload)}</p>
+              </div>
+              <div className="quick-activity-item__meta">
+                <time dateTime={command.created_at}>
+                  {new Date(command.created_at).toLocaleString("es-PE")}
+                </time>
+                <span role="status">
+                  {command.error_message
+                    ? `Requiere atención: ${command.error_message}`
+                    : command.status === "confirmed"
+                      ? "Confirmado"
+                      : "Pendiente de confirmación"}
+                </span>
+                {command.error_message && <Link to="/sincronizacion">Revisar registro</Link>}
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </section>
   );
 }
 
+export function FinanceCapture({
+  gateway,
+  context,
+  action,
+}: {
+  readonly gateway: AdminDataGateway;
+  readonly context: AdminWriteContext;
+  readonly action: "advance" | "expense" | "fuel";
+}): React.JSX.Element {
+  const [params, setParams] = useSearchParams();
+  const open = params.get("registrar") === "1";
+  const label =
+    action === "advance"
+      ? "Entregar dinero"
+      : action === "expense"
+        ? "Registrar gasto"
+        : "Registrar combustible";
+  return (
+    <section className="finance-capture">
+      <Button
+        variant={open ? "quiet" : "primary"}
+        aria-expanded={open}
+        onClick={() =>
+          setParams((previous) => {
+            const next = new URLSearchParams(previous);
+            if (open) next.delete("registrar");
+            else next.set("registrar", "1");
+            return next;
+          })
+        }
+      >
+        {open ? "Volver a los registros" : label}
+      </Button>
+      {open && (
+        <QuickWorkspace
+          key={action}
+          gateway={gateway}
+          context={context}
+          compact
+          initialAction={action}
+        />
+      )}
+    </section>
+  );
+}
 function OpenSettlement({
   gateway,
   cycleId,
@@ -498,21 +664,34 @@ function CycleServices({
   readonly gateway: AdminDataGateway;
   readonly cycleId: string;
   readonly confirmation: string;
-  readonly onSave: (body: OperationCommandBody, id: string) => Promise<void>;
+  readonly onSave: (
+    body: OperationCommandBody,
+    id: string,
+    duplicateConfirmed?: boolean,
+  ) => Promise<void>;
   readonly context: AdminWriteContext;
 }): React.JSX.Element {
   const [trips, setTrips] = useState<
     Awaited<ReturnType<AdminDataGateway["loadOperationalCycleDetail"]>>["trips"]
   >([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
     let current = true;
+    setLoaded(false);
+    setLoadError(false);
     void gateway
       .loadOperationalCycleDetail(cycleId)
       .then((data) => {
-        if (current) setTrips(data.trips);
+        if (current) {
+          setTrips(data.trips);
+          setLoaded(true);
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (current) setLoadError(true);
+      });
     return () => {
       current = false;
     };
@@ -520,7 +699,14 @@ function CycleServices({
   return (
     <div>
       <h3>Servicios y fletes</h3>
-      {trips.length === 0 ? (
+      {loadError ? (
+        <p role="alert">
+          No se pudieron consultar los servicios de esta salida. Vuelve a abrirla para intentarlo de
+          nuevo.
+        </p>
+      ) : !loaded ? (
+        <p role="status">Consultando servicios…</p>
+      ) : trips.length === 0 ? (
         <p>Sin servicios comerciales. La cuenta del conductor sigue disponible.</p>
       ) : (
         trips.map((trip) => (
@@ -581,7 +767,11 @@ function DepartureForm({
   readonly context: AdminWriteContext;
   readonly options: AdminTripSetupOptions;
   readonly repeat: AdminOperationalCycleRow | null;
-  readonly onSave: (body: OperationCommandBody, id: string) => Promise<void>;
+  readonly onSave: (
+    body: OperationCommandBody,
+    id: string,
+    duplicateConfirmed?: boolean,
+  ) => Promise<void>;
 }): React.JSX.Element {
   const storedFields = loadDraft(
     `rt-sitram:operation-draft:v1:${context.profileId}:departure:${repeat?.id ?? "new"}`,
@@ -596,7 +786,7 @@ function DepartureForm({
         setWithFuel(false);
         setWithService(false);
       }}
-      onSave={(form, id) =>
+      onSave={(form, id, duplicateConfirmed) =>
         onSave(
           {
             kind: "departure",
@@ -621,6 +811,7 @@ function DepartureForm({
             },
           },
           id,
+          duplicateConfirmed,
         )
       }
     >
@@ -716,7 +907,11 @@ export function MovementForm({
   readonly action: Exclude<QuickAction, "departure">;
   readonly options: AdminTripSetupOptions | null;
   readonly categories: readonly AdminOption[];
-  readonly onSave: (body: OperationCommandBody, id: string) => Promise<void>;
+  readonly onSave: (
+    body: OperationCommandBody,
+    id: string,
+    duplicateConfirmed?: boolean,
+  ) => Promise<void>;
 }): React.JSX.Element {
   return (
     <PersistentForm
@@ -728,7 +923,7 @@ export function MovementForm({
             ? "Registrar partida"
             : operationCommandLabel(action)
       }
-      onSave={(form, id) => {
+      onSave={(form, id, duplicateConfirmed) => {
         const common = { cycle_id: cycleId, occurred_at: occurredAt(form) };
         if (action === "advance")
           return onSave(
@@ -742,6 +937,7 @@ export function MovementForm({
               },
             },
             id,
+            duplicateConfirmed,
           );
         if (action === "expense")
           return onSave(
@@ -755,9 +951,14 @@ export function MovementForm({
               },
             },
             id,
+            duplicateConfirmed,
           );
         if (action === "fuel")
-          return onSave({ kind: action, payload: { ...common, ...fuel(form, id) } }, id);
+          return onSave(
+            { kind: action, payload: { ...common, ...fuel(form, id) } },
+            id,
+            duplicateConfirmed,
+          );
         if (action === "service")
           return onSave({ kind: action, payload: { ...common, ...service(form) } }, id);
         return onSave({ kind: action, payload: common }, id);
@@ -960,12 +1161,17 @@ function PersistentForm({
 }: {
   readonly draftKey: string;
   readonly title: string;
-  readonly onSave: (form: FormData, id: string) => Promise<void>;
+  readonly onSave: (form: FormData, id: string, duplicateConfirmed?: boolean) => Promise<void>;
   readonly children: ReactNode;
   readonly onSaved?: () => void;
 }): React.JSX.Element {
   const key = `rt-sitram:operation-draft:v1:${draftKey}`;
   const [draft, setDraft] = useState(() => loadDraft(key));
+  const [duplicate, setDuplicate] = useState<{
+    readonly signature: string;
+    readonly message: string;
+  } | null>(null);
+  const submitting = useRef(false);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState<string | null>(null),
     [error, setError] = useState<string | null>(null);
@@ -998,13 +1204,18 @@ function PersistentForm({
   };
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     const form = event.currentTarget;
     remember(form);
     setBusy(true);
     setError(null);
     setMessage(null);
+    const data = new FormData(form);
+    const signature = JSON.stringify(Array.from(data.entries()));
     try {
-      await onSave(new FormData(form), draft.id);
+      await onSave(data, draft.id, duplicate?.signature === signature);
+      setDuplicate(null);
       localStorage.removeItem(key);
       setDraft({ id: crypto.randomUUID(), fields: {} });
       form.reset();
@@ -1013,10 +1224,15 @@ function PersistentForm({
         "Guardado en este dispositivo. La actividad mostrará la confirmación del servidor.",
       );
     } catch (cause) {
+      if (cause instanceof PossibleDuplicateError) {
+        setDuplicate({ signature, message: cause.message });
+        return;
+      }
       setError(
         cause instanceof Error ? cause.message : "No se pudo guardar. El formulario se conserva.",
       );
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   };
@@ -1024,7 +1240,10 @@ function PersistentForm({
     <form
       ref={ref}
       className="admin-form"
-      onChange={(event) => remember(event.currentTarget)}
+      onChange={(event) => {
+        remember(event.currentTarget);
+        setDuplicate(null);
+      }}
       onSubmit={(event) => void submit(event)}
     >
       <div className="admin-form__heading">
@@ -1033,9 +1252,16 @@ function PersistentForm({
       <div className="admin-form__fields">{children}</div>
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
+      {duplicate && (
+        <div className="operation-duplicate-warning" role="alert">
+          <strong>Posible registro repetido</strong>
+          <p>{duplicate.message}</p>
+          <p>Si corresponde a otro hecho real, puedes guardarlo de todos modos.</p>
+        </div>
+      )}
       <div className="admin-form__actions">
         <Button disabled={busy} type="submit">
-          {busy ? "Guardando…" : "Guardar operación"}
+          {busy ? "Guardando…" : duplicate ? "Es otro registro: guardar" : "Guardar"}
         </Button>
       </div>
     </form>

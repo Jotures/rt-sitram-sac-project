@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   adminRouteComponents,
   dashboardAttentionDestination,
@@ -6,6 +6,7 @@ import {
   filterAndSortTrips,
   getTripSetupRequirements,
   labelStatusForUi,
+  loadOperationalSearch,
   maintenanceWorkOrderErrorMessage,
   managedTripIdFromSearch,
   operationalCycleErrorMessage,
@@ -15,7 +16,7 @@ import {
   vehicleIdFromSearch,
   workOrderPartsTotal,
 } from "./AdminRoutePage";
-import type { AdminTripRow } from "./admin-data";
+import type { AdminDataGateway, AdminTripRow } from "./admin-data";
 
 function trip(status: string, overrides: Partial<AdminTripRow> = {}): AdminTripRow {
   return {
@@ -176,6 +177,66 @@ describe("administrative status language", () => {
     expect(labelStatusForUi("in_transit")).toBe("En tránsito");
     expect(labelStatusForUi("available")).toBe("Disponible");
     expect(labelStatusForUi("Critical · New")).toBe("Crítica · Nueva");
+  });
+});
+
+describe("operational search coverage", () => {
+  function searchGateway() {
+    return {
+      listOperationalCycles: vi.fn(async () => [
+        {
+          id: "outing-a",
+          title: "SAL-001",
+          description: "ABC-123 · José",
+          status: "active",
+          amount: null,
+          date: "2026-09-11",
+        },
+      ]),
+      listTrips: vi.fn(async () => []),
+      listClients: vi.fn(async () => []),
+      listDocuments: vi.fn(async () => []),
+      listSettlements: vi.fn(async () => []),
+      listVehicles: vi.fn(async () => []),
+      listDrivers: vi.fn(async () => []),
+      listSuppliers: vi.fn(async () => []),
+      listMaintenance: vi.fn(async () => []),
+    };
+  }
+  it("opens the exact outing from a search result", async () => {
+    const result = await loadOperationalSearch(
+      searchGateway() as unknown as AdminDataGateway,
+      true,
+    );
+    expect(result.rows[0]).toMatchObject({
+      category: "Salida",
+      sourceId: "outing-a",
+      href: "/operacion/ciclos?salida=outing-a",
+    });
+    expect(result.unavailable).toEqual([]);
+  });
+  it("keeps available results and identifies unavailable sources", async () => {
+    const gateway = searchGateway();
+    gateway.listSuppliers.mockRejectedValueOnce(new Error("offline"));
+    const result = await loadOperationalSearch(gateway as unknown as AdminDataGateway, true);
+    expect(result.rows).toHaveLength(1);
+    expect(result.unavailable).toEqual(["Proveedores"]);
+  });
+  it("does not query or link operational routes for accounting", async () => {
+    const gateway = searchGateway();
+    const result = await loadOperationalSearch(gateway as unknown as AdminDataGateway, false);
+    expect(gateway.listOperationalCycles).not.toHaveBeenCalled();
+    expect(gateway.listDrivers).not.toHaveBeenCalled();
+    expect(gateway.listVehicles).not.toHaveBeenCalled();
+    expect(gateway.listMaintenance).not.toHaveBeenCalled();
+    expect(result.rows).toEqual([]);
+  });
+  it("reports a failed search instead of an empty operation when all sources fail", async () => {
+    const gateway = searchGateway();
+    for (const loader of Object.values(gateway)) loader.mockRejectedValueOnce(new Error("offline"));
+    await expect(
+      loadOperationalSearch(gateway as unknown as AdminDataGateway, true),
+    ).rejects.toThrow("No se pudo consultar");
   });
 });
 

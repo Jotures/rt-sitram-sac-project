@@ -46,7 +46,7 @@ const administrativeNavigation: readonly NavigationGroupSeed[] = [
     items: [
       {
         id: "trips",
-        label: "Viajes",
+        label: "Servicios y fletes",
         description: "Consulta y gestiona los viajes de la empresa.",
       },
       {
@@ -106,7 +106,7 @@ const administrativeNavigation: readonly NavigationGroupSeed[] = [
       },
       {
         id: "advances",
-        label: "Adelantos",
+        label: "Dinero entregado",
         description: "Consulta el dinero entregado antes o durante un viaje.",
       },
       {
@@ -204,7 +204,7 @@ const administrativeMobileNavigation: readonly NavigationItemSeed[] = [
   },
   {
     id: "trips",
-    label: "Viajes",
+    label: "Servicios y fletes",
     description: "Consulta y gestiona los viajes de la empresa.",
   },
   {
@@ -272,7 +272,10 @@ export function getDesktopNavigation(
             ];
       }),
     },
-    { label: "Más herramientas", items: items.filter((item) => !daily.includes(item.id)) },
+    {
+      label: "Más herramientas",
+      items: items.filter((item) => !daily.includes(item.id) && item.id !== "scheduling"),
+    },
   ].filter((group) => group.items.length > 0);
 }
 

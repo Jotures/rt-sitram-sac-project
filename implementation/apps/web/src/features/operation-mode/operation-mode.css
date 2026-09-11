@@ -94,6 +94,206 @@
   display: grid;
   gap: 1rem;
   min-width: 0;
+  scroll-margin-top: 5.5rem;
+}
+.operation-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+.operation-page-heading h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  color: #17313d;
+}
+.operation-page-heading p {
+  margin: 0.4rem 0 0;
+  color: #526b76;
+  line-height: 1.5;
+}
+.operation-page-heading .button {
+  flex-shrink: 0;
+}
+.operation-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.operation-summary a {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 1px solid #d3ddd8;
+  border-radius: 0.85rem;
+  background: #fff;
+  color: #17313d;
+  text-decoration: none;
+}
+.operation-summary strong {
+  font-size: 1.8rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.operation-summary span {
+  color: #526b76;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.operation-attention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #dbe4df;
+  color: #17313d;
+  text-decoration: none;
+}
+.operation-attention-row:last-of-type {
+  border-bottom: 0;
+}
+.operation-attention-row p {
+  margin: 0.3rem 0 0;
+  color: #526b76;
+  line-height: 1.45;
+  font-size: 0.875rem;
+}
+.operation-attention-row > span {
+  color: #91452c;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+.operation-attention-row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.operation-pending-link {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 1px solid #d9c8ab;
+  border-radius: 0.75rem;
+  background: #fffaf0;
+  color: #684e22;
+  text-decoration: none;
+}
+.operation-search-link {
+  display: block;
+  padding: 1rem;
+  border: 1px solid #d3ddd8;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #315e50;
+  line-height: 1.4;
+}
+.operation-list-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+.operation-context-note {
+  padding: 0.75rem;
+  background: #edf4f0;
+  border-radius: 0.6rem;
+  color: #315e50;
+  line-height: 1.5;
+}
+.finance-capture {
+  display: grid;
+  gap: 1rem;
+}
+.admin-route--finance .admin-page-header__eyebrow {
+  display: none;
+}
+.finance-capture > .button {
+  justify-self: start;
+}
+.finance-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  background: #e8eeeb;
+  border-radius: 0.8rem;
+}
+.finance-sections a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.6rem;
+  color: #405b62;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+.finance-sections a[aria-current="page"] {
+  color: #17313d;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(20 48 39 / 0.1);
+}
+.finance-sections a:focus-visible {
+  outline: 3px solid #b65e37;
+  outline-offset: 2px;
+}
+.operation-duplicate-warning {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ba9153;
+  border-radius: 0.65rem;
+  background: #fffaf0;
+  color: #684e22;
+  line-height: 1.5;
+}
+.operation-duplicate-warning p {
+  margin-bottom: 0;
+}
+.quick-workspace .button,
+.operation-home a {
+  min-height: 44px;
+}
+.quick-workspace .quick-section-heading > h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.quick-workspace .quick-outing-card__status {
+  font-size: 0.875rem;
+  white-space: normal;
+}
+.quick-workspace .quick-outing-card .button {
+  font-size: 0.875rem;
+}
+.operation-home a:focus-visible {
+  outline: 3px solid #b65e37;
+  outline-offset: 3px;
+}
+@media (max-width: 560px) {
+  .operation-page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .operation-page-heading .button {
+    align-self: start;
+  }
+  .operation-summary {
+    gap: 0.5rem;
+  }
+  .operation-summary a {
+    padding: 0.8rem 0.65rem;
+  }
+  .operation-summary strong {
+    font-size: 1.5rem;
+  }
+  .operation-attention-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .operation-list-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .quick-workspace .admin-card {
   padding: clamp(1rem, 2vw, 1.5rem);

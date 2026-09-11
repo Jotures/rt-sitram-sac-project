@@ -27,7 +27,7 @@ export const productRouteExperience: Readonly<Record<ProductRouteId, ProductRout
   passwordSetup: { label: "Establecer contraseña", family: "access", variant: "flow" },
   noAccess: { label: "Sin acceso", family: "system", variant: "root" },
   home: { label: "Inicio", family: "overview", variant: "root" },
-  trips: { label: "Viajes", family: "operations", variant: "root" },
+  trips: { label: "Servicios y fletes", family: "operations", variant: "root" },
   newTrip: { label: "Nuevo viaje", family: "operations", variant: "flow", parentId: "trips" },
   tripSummary: {
     label: "Resumen del viaje",
@@ -90,7 +90,7 @@ export const productRouteExperience: Readonly<Record<ProductRouteId, ProductRout
   suppliers: { label: "Proveedores", family: "management", variant: "root" },
   expenses: { label: "Gastos", family: "finance", variant: "root" },
   fuelEntries: { label: "Combustible", family: "finance", variant: "root" },
-  advances: { label: "Adelantos", family: "finance", variant: "root" },
+  advances: { label: "Dinero entregado", family: "finance", variant: "root" },
   settlements: { label: "Rendiciones", family: "finance", variant: "root" },
   settlementDetail: {
     label: "Detalle de rendición",

@@ -6,6 +6,15 @@ function navigationIds(groups: ReturnType<typeof getDesktopNavigation>): readonl
 }
 
 describe("role navigation", () => {
+  it("uses stable names and puts quick scheduling inside Salidas", () => {
+    for (const mode of ["quick", "full"] as const) {
+      const items = getDesktopNavigation("management", mode).flatMap((group) => group.items);
+      expect(items.find((item) => item.id === "trips")?.label).toBe("Servicios y fletes");
+      expect(items.find((item) => item.id === "advances")?.label).toBe("Dinero entregado");
+    }
+    expect(navigationIds(getDesktopNavigation("management", "quick"))).not.toContain("scheduling");
+    expect(navigationIds(getDesktopNavigation("management", "full"))).toContain("scheduling");
+  });
   it("gives administration the operational workspace", () => {
     const navigation = getDesktopNavigation("administration");
     const ids = navigationIds(navigation);

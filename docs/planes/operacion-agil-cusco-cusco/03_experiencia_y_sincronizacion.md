@@ -1,5 +1,10 @@
 # Experiencia, manual y sincronización
 
+La distribución de Inicio, Salidas y Finanzas y las ayudas de captura se actualizan
+mediante [DEC-049: navegación y contexto](06_navegacion_y_contexto.md). Inicio resume
+la operación; su acceso de registro abre Salidas. Finanzas mantiene los registros
+visibles y ofrece únicamente la captura correspondiente a la sección.
+
 ## Interruptor general
 
 En **Mi perfil → Forma de trabajar → Registro rápido** se cambia la preferencia personal. También se llega a Perfil desde el indicador de modo de la cabecera. Gerencia y Administración comienzan en rápido.

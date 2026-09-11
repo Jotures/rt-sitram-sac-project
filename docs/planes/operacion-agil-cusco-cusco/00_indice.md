@@ -12,6 +12,9 @@ El propietario autorizó implementación y despliegue, y aclaró que el interrup
 
 Exportaciones por registro: [uso, contrato y validación](05_exportaciones_por_registro.md).
 
+Simplificación de Inicio, Salidas y Finanzas, búsqueda y captura contextual:
+[navegación y contexto](06_navegacion_y_contexto.md), DEC-049.
+
 La entrega anterior, limitada a Salidas y comprobaciones HTTP, fue parcial. Este expediente sustituye sus afirmaciones de cierre.
 
 - Implementado: modo personal global, navegación diaria, formularios esenciales y vista completa.

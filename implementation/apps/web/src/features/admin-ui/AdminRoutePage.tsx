@@ -22,7 +22,15 @@ import { Icon, type IconName } from "../../components/primitives/Icon";
 import { StatusChip } from "../../components/primitives/StatusChip";
 import { useIdentity } from "../identity/IdentityProvider";
 import { MoreDetails, useOperationMode } from "../operation-mode/OperationModeProvider";
-import { QuickWorkspace } from "../operation-mode/QuickWorkspace";
+import { QuickWorkspace, FinanceCapture } from "../operation-mode/QuickWorkspace";
+import { OperationHome } from "../operation-mode/OperationHome";
+import { useOperationActivity } from "../operation-mode/useOperationActivity";
+import {
+  matchesSearch,
+  outingPath,
+  cycleIdentity,
+  cycleStateLabel,
+} from "../operation-mode/workspace-model";
 import { CycleRendition } from "../operation-mode/CycleRendition";
 import { CycleCosts } from "../operation-mode/CycleCosts";
 import { CycleReportPanel } from "../reports/CycleReportPanel";
@@ -108,13 +116,13 @@ const pageCopy: Readonly<
   },
   expenses: {
     title: "Gastos",
-    description: "Registra o revisa gastos reales vinculados a un viaje.",
+    description: "Gastos del recorrido, comprobantes y revisión.",
   },
   fuelEntries: {
     title: "Combustible",
-    description: "Registra y revisa abastecimientos reales vinculados a un viaje.",
+    description: "Abastecimientos de las unidades y su forma de pago.",
   },
-  advances: { title: "Adelantos", description: "Fondos entregados antes o durante un viaje." },
+  advances: { title: "Dinero entregado", description: "Entregas al conductor y su registro." },
   settlements: {
     title: "Rendiciones",
     description: "Conciliación y cierre auditado del dinero del viaje.",
@@ -226,15 +234,23 @@ export function AdminRoutePage({
   const canMutate = isOnline && (role === "management" || role === "administration");
   const resolvedPathname = pathname ?? globalThis.location?.pathname ?? "";
   const resolvedSearch = search ?? globalThis.location?.search ?? "";
+  const quickCaptureEnabled =
+    quick &&
+    (role === "management" || role === "administration") &&
+    !new URLSearchParams(resolvedSearch).has("viaje") &&
+    !new URLSearchParams(resolvedSearch).has("proveedor");
 
   const page = (() => {
     if (quick && (role === "management" || role === "administration")) {
-      if (["home", "newTrip", "operationalCycles", "scheduling"].includes(routeId)) {
+      if (routeId === "home")
+        return <OperationHome gateway={gateway} companyId={context.companyId} />;
+      if (["newTrip", "operationalCycles", "scheduling"].includes(routeId)) {
         return (
           <QuickWorkspace
             gateway={gateway}
             context={context}
             initialAction={routeId === "newTrip" ? "departure" : undefined}
+            scheduledOnly={routeId === "scheduling"}
           />
         );
       }
@@ -291,6 +307,11 @@ export function AdminRoutePage({
       case "expenses":
         return (
           <ExpensesPage
+            quickCapture={
+              quickCaptureEnabled ? (
+                <FinanceCapture gateway={gateway} context={context} action="expense" />
+              ) : undefined
+            }
             context={context}
             gateway={gateway}
             canMutate={canMutate}
@@ -301,6 +322,11 @@ export function AdminRoutePage({
       case "fuelEntries":
         return (
           <FuelEntriesPage
+            quickCapture={
+              quickCaptureEnabled ? (
+                <FinanceCapture gateway={gateway} context={context} action="fuel" />
+              ) : undefined
+            }
             context={context}
             gateway={gateway}
             canMutate={canMutate}
@@ -311,6 +337,11 @@ export function AdminRoutePage({
       case "advances":
         return (
           <AdvancesPage
+            quickCapture={
+              quickCaptureEnabled ? (
+                <FinanceCapture gateway={gateway} context={context} action="advance" />
+              ) : undefined
+            }
             context={context}
             gateway={gateway}
             canMutate={canMutate}
@@ -390,7 +421,13 @@ export function AdminRoutePage({
           </Suspense>
         );
       case "search":
-        return <OperationalSearchPage gateway={gateway} search={resolvedSearch} />;
+        return (
+          <OperationalSearchPage
+            gateway={gateway}
+            search={resolvedSearch}
+            canAccessOperations={role === "management" || role === "administration"}
+          />
+        );
       case "companySettings":
         return <CompanySettingsPage company={identityState.identity.company} />;
       case "profileSettings":
@@ -469,24 +506,26 @@ export function AdminRoutePage({
       <div
         className={`admin-route admin-route--${routeExperience.family} admin-route--${routeExperience.variant}`}
       >
-        {quick &&
-          (role === "management" || role === "administration") &&
-          (routeId === "advances" || routeId === "expenses" || routeId === "fuelEntries") && (
-            <QuickWorkspace
-              gateway={gateway}
-              context={context}
-              compact
-              initialAction={
-                routeId === "advances" ? "advance" : routeId === "expenses" ? "expense" : "fuel"
-              }
-            />
-          )}
-        {quick &&
-        (routeId === "advances" || routeId === "expenses" || routeId === "fuelEntries") ? (
-          <MoreDetails label="Consultar y revisar registros anteriores">{page}</MoreDetails>
-        ) : (
-          page
+        {["expenses", "fuelEntries", "advances", "settlements", "collections"].includes(
+          routeId,
+        ) && (
+          <nav className="finance-sections" aria-label="Secciones de finanzas">
+            {(
+              [
+                ["advances", "Dinero entregado"],
+                ["expenses", "Gastos"],
+                ["fuelEntries", "Combustible"],
+                ["settlements", "Rendiciones"],
+                ["collections", "Cobranza"],
+              ] as const
+            ).map(([id, label]) => (
+              <Link key={id} to={routePaths[id]} aria-current={routeId === id ? "page" : undefined}>
+                {label}
+              </Link>
+            ))}
+          </nav>
         )}
+        {page}
       </div>
     </>
   );
@@ -507,6 +546,21 @@ function useNetworkOnline(): boolean {
     };
   }, []);
   return online;
+}
+
+function useFinanceRefresh(companyId: string, reload: () => void): void {
+  const commands = useOperationActivity(companyId);
+  const confirmed = commands
+    .filter((command) => command.status === "confirmed")
+    .map((command) => command.id)
+    .join(",");
+  const previous = useRef(confirmed);
+  useEffect(() => {
+    if (previous.current !== confirmed) {
+      previous.current = confirmed;
+      reload();
+    }
+  }, [confirmed, reload]);
 }
 
 function useResource<T>(
@@ -1073,9 +1127,13 @@ function RecordTable({
               <td>
                 <StatusChip label={labelStatusForUi(row.status)} tone={toneForStatus(row.status)} />
               </td>
-              {copy.showDate ? <td className="admin-table__date">{formatDate(row.date)}</td> : null}
+              {copy.showDate ? (
+                <td className="admin-table__date" data-label={copy.date}>
+                  {formatDate(row.date)}
+                </td>
+              ) : null}
               {copy.showAmount ? (
-                <td className="admin-table__amount admin-table__number">
+                <td className="admin-table__amount admin-table__number" data-label={copy.amount}>
                   {row.amount === null ? "—" : formatMoney(row.amount)}
                 </td>
               ) : null}
@@ -2600,6 +2658,7 @@ function TripsPage({
   readonly mode: "trips" | "scheduling";
   readonly search: string;
 }): React.JSX.Element {
+  const { quick } = useOperationMode();
   const tripsLoader = useCallback(() => gateway.listTrips(), [gateway]);
   const trips = useResource(tripsLoader);
   const optionsLoader = useCallback(() => gateway.loadTripSetupOptions(), [gateway]);
@@ -2620,7 +2679,7 @@ function TripsPage({
     setSelected(trips.data.find((trip) => trip.id === managedTripId) ?? null);
   }, [managedTripId, resolvedManagedTripId, trips.data]);
 
-  const title = mode === "scheduling" ? "Programación" : "Viajes";
+  const title = mode === "scheduling" ? "Programación de servicios" : "Servicios y fletes";
   const description =
     mode === "scheduling"
       ? "Asigna recursos y define si la operación se capturará desde la app o desde oficina."
@@ -2639,9 +2698,12 @@ function TripsPage({
       <PageHeader
         action={
           mode === "trips" && canMutate ? (
-            <Link className="admin-header-action" to={routePaths.newTrip}>
+            <Link
+              className="admin-header-action"
+              to={quick ? outingPath(undefined, "service") : routePaths.newTrip}
+            >
               <Icon name="plus" size={18} />
-              Nuevo viaje
+              Agregar servicio
             </Link>
           ) : undefined
         }
@@ -4298,16 +4360,22 @@ function ExpensesPage({
   canMutate,
   online,
   search,
+  quickCapture,
 }: {
   readonly context: AdminWriteContext;
   readonly gateway: AdminDataGateway;
   readonly canMutate: boolean;
   readonly online: boolean;
   readonly search: string;
+  readonly quickCapture?: ReactNode;
 }): React.JSX.Element {
   const loader = useCallback(() => gateway.listExpenses(), [gateway]);
   const resource = useResource(loader);
-  const captureOptions = useStaffCaptureOptions(gateway, canMutate && online);
+  useFinanceRefresh(context.companyId, resource.reload);
+  const captureOptions = useStaffCaptureOptions(
+    gateway,
+    canMutate && online && quickCapture === undefined,
+  );
   const tripId = new URLSearchParams(search).get("viaje");
   const [review, setReview] = useState<{
     readonly row: AdminListRow;
@@ -4316,26 +4384,27 @@ function ExpensesPage({
   return (
     <>
       <PageHeader title="Gastos" description={pageCopy.expenses?.description ?? ""} />
-      {canMutate && online ? (
-        <AdminFormDisclosure
-          label="Registrar gasto administrativo"
-          copy="Registra un gasto real en representación del viaje; requiere conexión y deja auditoría."
-          open={tripId !== null}
-        >
-          <StaffCaptureGuidance kind="expense" />
-          <StaffCaptureFormState
-            context={context}
-            gateway={gateway}
-            kind="expense"
-            options={captureOptions}
-            onSaved={resource.reload}
-            defaultSupplierId={null}
-            defaultTripId={tripId}
-          />
-        </AdminFormDisclosure>
-      ) : (
-        <ReadOnlyNotice copy={staffCaptureReadOnlyCopy(online)} />
-      )}
+      {quickCapture ??
+        (canMutate && online ? (
+          <AdminFormDisclosure
+            label="Registrar gasto administrativo"
+            copy="Registra un gasto real en representación del viaje; requiere conexión y deja auditoría."
+            open={tripId !== null}
+          >
+            <StaffCaptureGuidance kind="expense" />
+            <StaffCaptureFormState
+              context={context}
+              gateway={gateway}
+              kind="expense"
+              options={captureOptions}
+              onSaved={resource.reload}
+              defaultSupplierId={null}
+              defaultTripId={tripId}
+            />
+          </AdminFormDisclosure>
+        ) : (
+          <ReadOnlyNotice copy={staffCaptureReadOnlyCopy(online)} />
+        ))}
       <PageState resource={resource} emptyCopy="No existen gastos para revisar.">
         {(rows) => (
           <RecordTable
@@ -4444,16 +4513,22 @@ function FuelEntriesPage({
   canMutate,
   online,
   search,
+  quickCapture,
 }: {
   readonly context: AdminWriteContext;
   readonly gateway: AdminDataGateway;
   readonly canMutate: boolean;
   readonly online: boolean;
   readonly search: string;
+  readonly quickCapture?: ReactNode;
 }): React.JSX.Element {
   const loader = useCallback(() => gateway.listFuelEntries(), [gateway]);
   const resource = useResource(loader);
-  const captureOptions = useStaffCaptureOptions(gateway, canMutate && online);
+  useFinanceRefresh(context.companyId, resource.reload);
+  const captureOptions = useStaffCaptureOptions(
+    gateway,
+    canMutate && online && quickCapture === undefined,
+  );
   const supplierId = new URLSearchParams(search).get("proveedor");
   const tripId = new URLSearchParams(search).get("viaje");
   return (
@@ -4463,7 +4538,8 @@ function FuelEntriesPage({
       resource={resource}
       emptyCopy="No existen abastecimientos registrados."
       form={
-        canMutate && online ? (
+        quickCapture ??
+        (canMutate && online ? (
           <AdminFormDisclosure
             label="Registrar abastecimiento administrativo"
             copy="Registra un abastecimiento real en representación del viaje; requiere conexión y deja auditoría."
@@ -4482,7 +4558,7 @@ function FuelEntriesPage({
           </AdminFormDisclosure>
         ) : (
           <ReadOnlyNotice copy={staffCaptureReadOnlyCopy(online)} />
-        )
+        ))
       }
       listLabel="Abastecimientos registrados"
       tableKind="fuel"
@@ -4888,15 +4964,18 @@ function AdvancesPage({
   canMutate,
   online,
   search,
+  quickCapture,
 }: {
   readonly gateway: AdminDataGateway;
   readonly context: AdminWriteContext;
   readonly canMutate: boolean;
   readonly online: boolean;
   readonly search: string;
+  readonly quickCapture?: ReactNode;
 }): React.JSX.Element {
   const loader = useCallback(() => gateway.listAdvances(), [gateway]);
   const resource = useResource(loader);
+  useFinanceRefresh(context.companyId, resource.reload);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const optionsLoader = useCallback(
     () => Promise.all([gateway.listTrips(), gateway.loadOptions()]),
@@ -4950,12 +5029,13 @@ function AdvancesPage({
     );
   return (
     <ResourceCrudPage
-      title="Adelantos"
+      title="Dinero entregado"
       description={pageCopy.advances?.description ?? ""}
       resource={resource}
-      emptyCopy="No existen adelantos registrados."
+      emptyCopy="Todavía no hay entregas de dinero registradas."
       form={
-        canMutate && form !== null ? (
+        quickCapture ??
+        (canMutate && form !== null ? (
           <AdminFormDisclosure
             label="Registrar adelanto"
             copy="El comando se identifica de forma segura para evitar duplicar dinero al reintentar."
@@ -4965,7 +5045,7 @@ function AdvancesPage({
           </AdminFormDisclosure>
         ) : canMutate ? null : (
           <ReadOnlyNotice />
-        )
+        ))
       }
       listLabel="Fondos entregados"
       tableKind="finance"
@@ -6618,71 +6698,138 @@ interface OperationalSearchResult extends AdminListRow {
   readonly sourceId: string;
 }
 
+export async function loadOperationalSearch(
+  gateway: AdminDataGateway,
+  canAccessOperations: boolean,
+): Promise<{ rows: readonly OperationalSearchResult[]; unavailable: readonly string[] }> {
+  const sources: { label: string; load: () => Promise<readonly OperationalSearchResult[]> }[] = [
+    {
+      label: "Servicios",
+      load: async () =>
+        (await gateway.listTrips()).map((row) =>
+          operationalSearchResult("Servicio", row, tripSummaryPath(row.id)),
+        ),
+    },
+    {
+      label: "Clientes",
+      load: async () =>
+        (await gateway.listClients()).map((row) =>
+          operationalSearchResult("Cliente", row, clientDetailPath(row.id)),
+        ),
+    },
+    {
+      label: "Documentos",
+      load: async () =>
+        (await gateway.listDocuments()).map((row) =>
+          operationalSearchResult(
+            "Documento",
+            row,
+            row.entityType === "company" || row.entityId === null
+              ? routePaths.documents
+              : documentsPathForAssociation(row.entityType, row.entityId),
+          ),
+        ),
+    },
+    {
+      label: "Rendiciones",
+      load: async () =>
+        (await gateway.listSettlements()).map((row) =>
+          operationalSearchResult("Rendición", row, settlementDetailPath(row.id)),
+        ),
+    },
+  ];
+  if (canAccessOperations)
+    sources.unshift(
+      {
+        label: "Salidas",
+        load: async () =>
+          (await gateway.listOperationalCycles()).map((row) =>
+            operationalSearchResult(
+              "Salida",
+              {
+                ...row,
+                title: cycleIdentity(row),
+                description: row.notes ?? "Salida Cusco–Cusco",
+                technicalReference: row.title,
+                status: cycleStateLabel(row),
+              },
+              outingPath(row.id),
+            ),
+          ),
+      },
+      {
+        label: "Unidades",
+        load: async () =>
+          (await gateway.listVehicles()).map((row) =>
+            operationalSearchResult("Unidad", row, vehicleDetailPath(row.id)),
+          ),
+      },
+      {
+        label: "Conductores",
+        load: async () =>
+          (await gateway.listDrivers()).map((row) =>
+            operationalSearchResult("Conductor", row, driverDetailPath(row.id)),
+          ),
+      },
+      {
+        label: "Proveedores",
+        load: async () =>
+          (await gateway.listSuppliers()).map((row) =>
+            operationalSearchResult("Proveedor", row, routePaths.suppliers),
+          ),
+      },
+      {
+        label: "Mantenimiento",
+        load: async () =>
+          (await gateway.listMaintenance()).map((row) =>
+            operationalSearchResult(
+              "Mantenimiento",
+              row,
+              row.recordType === "work_order"
+                ? maintenanceWorkOrderPath(row.id)
+                : `${routePaths.maintenance}?unidad=${encodeURIComponent(row.vehicleId)}`,
+            ),
+          ),
+      },
+    );
+  const results = await Promise.allSettled(sources.map((source) => source.load()));
+  if (results.every((result) => result.status === "rejected")) {
+    throw new Error(
+      "No se pudo consultar la información. Comprueba la conexión y vuelve a intentar.",
+    );
+  }
+  return {
+    rows: results.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
+    unavailable: results.flatMap((result, index) =>
+      result.status === "rejected" ? [sources[index]!.label] : [],
+    ),
+  };
+}
+
 function OperationalSearchPage({
   gateway,
   search,
+  canAccessOperations,
 }: {
   readonly gateway: AdminDataGateway;
   readonly search: string;
+  readonly canAccessOperations: boolean;
 }): React.JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams(search);
   const query = searchParams.get("q") ?? "";
-  const loader = useCallback(async (): Promise<readonly OperationalSearchResult[]> => {
-    const [trips, vehicles, drivers, clients, documents, settlements, maintenance, suppliers] =
-      await Promise.all([
-        gateway.listTrips(),
-        gateway.listVehicles(),
-        gateway.listDrivers(),
-        gateway.listClients(),
-        gateway.listDocuments(),
-        gateway.listSettlements(),
-        gateway.listMaintenance(),
-        gateway.listSuppliers(),
-      ]);
-    return [
-      ...trips.map((row) => operationalSearchResult("Viaje", row, tripSummaryPath(row.id))),
-      ...vehicles.map((row) => operationalSearchResult("Unidad", row, vehicleDetailPath(row.id))),
-      ...drivers.map((row) => operationalSearchResult("Conductor", row, driverDetailPath(row.id))),
-      ...clients.map((row) => operationalSearchResult("Cliente", row, clientDetailPath(row.id))),
-      ...suppliers.map((row) => operationalSearchResult("Proveedor", row, routePaths.suppliers)),
-      ...documents.map((row) =>
-        operationalSearchResult(
-          "Documento",
-          row,
-          row.entityType === "company" || row.entityId === null
-            ? routePaths.documents
-            : documentsPathForAssociation(row.entityType, row.entityId),
-        ),
-      ),
-      ...settlements.map((row) =>
-        operationalSearchResult("Rendición", row, settlementDetailPath(row.id)),
-      ),
-      ...maintenance.map((row) =>
-        operationalSearchResult(
-          "Mantenimiento",
-          row,
-          row.recordType === "work_order"
-            ? maintenanceWorkOrderPath(row.id)
-            : `${routePaths.maintenance}?unidad=${encodeURIComponent(row.vehicleId)}`,
-        ),
-      ),
-    ];
-  }, [gateway]);
+  const loader = useCallback(
+    () => loadOperationalSearch(gateway, canAccessOperations),
+    [gateway, canAccessOperations],
+  );
   const resource = useResource(loader);
-  const results =
-    resource.data === null
-      ? null
-      : resource.data
-          .filter((result) => {
-            const normalized = query.trim().toLocaleLowerCase("es-PE");
-            return (
-              normalized === "" ||
-              `${result.title} ${result.description} ${result.technicalReference ?? ""} ${result.category}`
-                .toLocaleLowerCase("es-PE")
-                .includes(normalized)
-            );
-          })
-          .slice(0, 50);
+  const matched =
+    resource.data?.rows.filter((result) =>
+      matchesSearch(
+        `${result.title} ${result.description} ${result.technicalReference ?? ""} ${result.category} ${result.date ?? ""} ${result.date ? new Date(result.date).toLocaleDateString("es-PE") : ""}`,
+        query,
+      ),
+    ) ?? null;
+  const results = matched?.slice(0, 50) ?? null;
   return (
     <>
       <PageHeader title="Buscar" description={pageCopy.search?.description ?? ""} />
@@ -6705,6 +6852,20 @@ function OperationalSearchPage({
           Los resultados respetan los permisos y el alcance de empresa de tu sesión.
         </p>
       </section>
+      {resource.data && resource.data.unavailable.length > 0 && (
+        <p className="admin-notice" role="status">
+          Búsqueda incompleta. No se pudo consultar: {resource.data.unavailable.join(", ")}.{" "}
+          <Button variant="quiet" onClick={resource.reload}>
+            Volver a intentar
+          </Button>
+        </p>
+      )}
+      {matched && matched.length > 50 && (
+        <p>
+          Mostrando 50 de {matched.length} coincidencias. Añade una placa, fecha o nombre para
+          precisar la búsqueda.
+        </p>
+      )}
       {results === null ? (
         <PageState resource={resource} emptyCopy="No hay resultados.">
           {() => null}
