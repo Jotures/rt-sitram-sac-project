@@ -64,6 +64,10 @@ consulta ni recibe enlaces a las rutas operativas restringidas.
 - Los adaptadores, franja amarilla, navegación técnica y datos de prueba viven en
   `implementation/.local/ux-review/`, fuera del árbol versionado y del punto de
   entrada productivo. No se publican ni se registran en el backend.
+- Publicado en Vercel desde `4687796`, Ready y alias principal verificados. Humo
+  autenticado en Inicio, Salidas, Gastos y Buscar; búsqueda de placa sin guion
+  correcta y siete rutas HTTP 200. Se comprobó la ausencia de controles ficticios
+  tanto en el bundle publicado como en la interfaz. Detalle en el log de sesión.
 - Sin migraciones, cambios de RLS, cierres automáticos ni nuevas dependencias.
   Se usan los comandos y canales existentes; no se hicieron movimientos reales
   para probar la interfaz. Android físico y pruebas de reconexión con el backend
