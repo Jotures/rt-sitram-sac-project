@@ -24,13 +24,11 @@ import { useIdentity } from "../identity/IdentityProvider";
 import { MoreDetails, useOperationMode } from "../operation-mode/OperationModeProvider";
 import { QuickWorkspace, FinanceCapture } from "../operation-mode/QuickWorkspace";
 import { OperationHome } from "../operation-mode/OperationHome";
+import { isOpenAccount } from "../operation-mode/assistance-model";
+import { parseSearchIntent, matchesSearchIntent } from "../operation-mode/search-intent";
+import { CaptureAssistance } from "../operation-mode/CaptureAssistance";
 import { useOperationActivity } from "../operation-mode/useOperationActivity";
-import {
-  matchesSearch,
-  outingPath,
-  cycleIdentity,
-  cycleStateLabel,
-} from "../operation-mode/workspace-model";
+import { outingPath, cycleIdentity, cycleStateLabel } from "../operation-mode/workspace-model";
 import { CycleRendition } from "../operation-mode/CycleRendition";
 import { CycleCosts } from "../operation-mode/CycleCosts";
 import { CycleReportPanel } from "../reports/CycleReportPanel";
@@ -1098,8 +1096,28 @@ function RecordTable({
   readonly kind?: AdminTableKind;
 }): React.JSX.Element {
   const copy = adminTableCopy[kind];
+  const [recordParams, setRecordParams] = useSearchParams();
+  const requestedRecord = recordParams.get("registro");
+  const visibleRows = requestedRecord ? rows.filter((row) => row.id === requestedRecord) : rows;
   return (
     <div className="admin-table-wrap">
+      {requestedRecord && (
+        <p className="admin-form-note">
+          {visibleRows.length
+            ? "Registro seleccionado desde la búsqueda."
+            : "El registro no está disponible en esta lista."}{" "}
+          <button
+            type="button"
+            onClick={() => {
+              const next = new URLSearchParams(recordParams);
+              next.delete("registro");
+              setRecordParams(next);
+            }}
+          >
+            Ver todos los registros
+          </button>
+        </p>
+      )}
       <table className={`admin-table admin-table--${kind}`}>
         <thead>
           <tr>
@@ -1115,7 +1133,7 @@ function RecordTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {visibleRows.map((row) => (
             <tr key={row.id}>
               <td>
                 <strong>{row.title}</strong>
@@ -4781,6 +4799,7 @@ function StaffExpenseForm({
         Los montos se registran en soles (PEN). Si la rendición ya se cerró, primero debe reabrirse
         con su motivo auditado.
       </p>
+      <CaptureAssistance gateway={gateway} kind="expense" legacy />
     </SimpleForm>
   );
 }
@@ -4915,6 +4934,7 @@ function StaffFuelForm({
         Los montos se registran en soles (PEN). El servidor valida el viaje, la lectura y que el
         total sea consistente con cantidad × precio unitario.
       </p>
+      <CaptureAssistance gateway={gateway} kind="fuel" legacy />
     </SimpleForm>
   );
 }
@@ -6692,6 +6712,7 @@ function AlertsPage({
 }
 
 interface OperationalSearchResult extends AdminListRow {
+  readonly pendingAccount?: boolean | undefined;
   readonly category: string;
   readonly href: string;
   /** The record UUID stays separate from the table key used to render mixed results. */
@@ -6701,8 +6722,50 @@ interface OperationalSearchResult extends AdminListRow {
 export async function loadOperationalSearch(
   gateway: AdminDataGateway,
   canAccessOperations: boolean,
-): Promise<{ rows: readonly OperationalSearchResult[]; unavailable: readonly string[] }> {
+  category?: string | null,
+): Promise<{
+  rows: readonly OperationalSearchResult[];
+  unavailable: readonly string[];
+  limited?: readonly string[];
+}> {
+  let accountRequest: Promise<readonly AdminListRow[]> | undefined;
+  let accountUnavailable = false;
+  const accounts = (): Promise<readonly AdminListRow[]> =>
+    (accountRequest ??= gateway.listSettlements());
   const sources: { label: string; load: () => Promise<readonly OperationalSearchResult[]> }[] = [
+    {
+      label: "Combustible",
+      load: async () =>
+        (await gateway.listFuelEntries()).map((row) =>
+          operationalSearchResult(
+            "Combustible",
+            row,
+            `${routePaths.fuelEntries}?registro=${encodeURIComponent(row.id)}`,
+          ),
+        ),
+    },
+    {
+      label: "Gastos",
+      load: async () =>
+        (await gateway.listExpenses()).map((row) =>
+          operationalSearchResult(
+            "Gasto",
+            row,
+            `${routePaths.expenses}?registro=${encodeURIComponent(row.id)}`,
+          ),
+        ),
+    },
+    {
+      label: "Dinero entregado",
+      load: async () =>
+        (await gateway.listAdvances()).map((row) =>
+          operationalSearchResult(
+            "Dinero entregado",
+            row,
+            `${routePaths.advances}?registro=${encodeURIComponent(row.id)}`,
+          ),
+        ),
+    },
     {
       label: "Servicios",
       load: async () =>
@@ -6733,7 +6796,7 @@ export async function loadOperationalSearch(
     {
       label: "Rendiciones",
       load: async () =>
-        (await gateway.listSettlements()).map((row) =>
+        (await accounts()).map((row) =>
           operationalSearchResult("Rendición", row, settlementDetailPath(row.id)),
         ),
     },
@@ -6742,12 +6805,28 @@ export async function loadOperationalSearch(
     sources.unshift(
       {
         label: "Salidas",
-        load: async () =>
-          (await gateway.listOperationalCycles()).map((row) =>
+        load: async () => {
+          const [cycles, settlements] = await Promise.allSettled([
+            gateway.listOperationalCycles(),
+            accounts(),
+          ]);
+          if (settlements.status === "rejected") accountUnavailable = true;
+          if (cycles.status === "rejected") throw cycles.reason;
+          return cycles.value.map((row) =>
             operationalSearchResult(
               "Salida",
               {
                 ...row,
+                pendingAccount:
+                  settlements.status === "fulfilled"
+                    ? row.status !== "cancelled" &&
+                      (settlements.value.some(
+                        (account) => account.cycleId === row.id && isOpenAccount(account),
+                      ) ||
+                        ((Boolean(row.returnedAt) || row.status === "completed") &&
+                          settlements.value.length < 200 &&
+                          !settlements.value.some((account) => account.cycleId === row.id)))
+                    : undefined,
                 title: cycleIdentity(row),
                 description: row.notes ?? "Salida Cusco–Cusco",
                 technicalReference: row.title,
@@ -6755,7 +6834,8 @@ export async function loadOperationalSearch(
               },
               outingPath(row.id),
             ),
-          ),
+          );
+        },
       },
       {
         label: "Unidades",
@@ -6792,17 +6872,39 @@ export async function loadOperationalSearch(
           ),
       },
     );
-  const results = await Promise.allSettled(sources.map((source) => source.load()));
+  const sourceCategories: Readonly<Record<string, string>> = {
+    Combustible: "Combustible",
+    Gastos: "Gasto",
+    "Dinero entregado": "Dinero entregado",
+    Servicios: "Servicio",
+    Salidas: "Salida",
+    Rendiciones: "Rendición",
+  };
+  const requestedSources = category
+    ? sources.filter((source) => sourceCategories[source.label] === category)
+    : sources;
+  if (!requestedSources.length) return { rows: [], unavailable: [] };
+  const results = await Promise.allSettled(requestedSources.map((source) => source.load()));
   if (results.every((result) => result.status === "rejected")) {
     throw new Error(
       "No se pudo consultar la información. Comprueba la conexión y vuelve a intentar.",
     );
   }
   return {
-    rows: results.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
-    unavailable: results.flatMap((result, index) =>
-      result.status === "rejected" ? [sources[index]!.label] : [],
+    limited: results.flatMap((result, index) =>
+      result.status === "fulfilled" && result.value.length >= 200
+        ? [requestedSources[index]!.label]
+        : [],
     ),
+    rows: results.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
+    unavailable: [
+      ...new Set([
+        ...results.flatMap((result, index) =>
+          result.status === "rejected" ? [requestedSources[index]!.label] : [],
+        ),
+        ...(accountUnavailable ? ["Rendiciones"] : []),
+      ]),
+    ],
   };
 }
 
@@ -6817,18 +6919,14 @@ function OperationalSearchPage({
 }): React.JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams(search);
   const query = searchParams.get("q") ?? "";
+  const intent = parseSearchIntent(query);
   const loader = useCallback(
-    () => loadOperationalSearch(gateway, canAccessOperations),
-    [gateway, canAccessOperations],
+    () => loadOperationalSearch(gateway, canAccessOperations, intent.category),
+    [gateway, canAccessOperations, intent.category],
   );
   const resource = useResource(loader);
   const matched =
-    resource.data?.rows.filter((result) =>
-      matchesSearch(
-        `${result.title} ${result.description} ${result.technicalReference ?? ""} ${result.category} ${result.date ?? ""} ${result.date ? new Date(result.date).toLocaleDateString("es-PE") : ""}`,
-        query,
-      ),
-    ) ?? null;
+    resource.data?.rows.filter((result) => matchesSearchIntent(result, intent)) ?? null;
   const results = matched?.slice(0, 50) ?? null;
   return (
     <>
@@ -6843,14 +6941,22 @@ function OperationalSearchPage({
               setOrDeleteSearchParam(next, "q", event.target.value);
               setSearchParams(next, { replace: true });
             }}
-            placeholder="Ruta, placa, conductor, cliente, documento o código"
+            placeholder="Combustible de VDR768 este mes"
             type="search"
             value={query}
           />
         </label>
         <p className="admin-form-note">
-          Los resultados respetan los permisos y el alcance de empresa de tu sesión.
+          Puedes escribir «gastos esta semana» o «salidas pendientes de rendir».
         </p>
+        {intent.labels.length > 0 && (
+          <div className="assistance-filters" aria-label="Filtros interpretados">
+            <strong>Buscando:</strong>
+            {intent.labels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        )}
       </section>
       {resource.data && resource.data.unavailable.length > 0 && (
         <p className="admin-notice" role="status">
@@ -6864,6 +6970,12 @@ function OperationalSearchPage({
         <p>
           Mostrando 50 de {matched.length} coincidencias. Añade una placa, fecha o nombre para
           precisar la búsqueda.
+        </p>
+      )}
+      {Boolean(resource.data?.limited?.length) && (
+        <p className="admin-form-note">
+          La consulta incluye los registros más recientes de {resource.data!.limited!.join(", ")};
+          puede haber registros anteriores fuera de estos resultados.
         </p>
       )}
       {results === null ? (
@@ -6890,7 +7002,7 @@ function OperationalSearchPage({
           <RecordTable
             rows={results.map((result) => ({
               ...result,
-              description: `${result.category} · ${result.description}`,
+              description: `${result.category} · ${result.description}${result.amount === null ? "" : ` · ${formatMoney(result.amount)}`}${result.date ? ` · ${formatDate(result.date)}` : ""}`,
             }))}
             actions={(row) => {
               const result = results.find((candidate) => candidate.id === row.id);
@@ -6909,7 +7021,7 @@ function OperationalSearchPage({
 
 function operationalSearchResult(
   category: string,
-  row: AdminListRow,
+  row: AdminListRow & { readonly pendingAccount?: boolean | undefined },
   href: string,
 ): OperationalSearchResult {
   return {
@@ -7826,6 +7938,26 @@ function SettlementDetailPage({
                   <DetailTerm label="Conductor" value={detail.driverName ?? "No registrado"} />
                   <DetailTerm label="Fecha" value={formatDate(detail.settlement.date)} />
                 </dl>
+                <details className="account-explanation">
+                  <summary>Cómo se forma esta cuenta</summary>
+                  <p>
+                    Dinero entregado ({formatMoney(detail.totalAdvances)}) menos gastos reconocidos
+                    ({formatMoney(detail.totalExpenses)}). El saldo registrado es{" "}
+                    {formatMoney(detail.balance)}; positivo indica devolución del conductor y
+                    negativo, reembolso de la empresa.
+                  </p>
+                  <p>
+                    Consulta debajo los adelantos y gastos que respaldan estos importes. Los gastos
+                    pendientes u observados requieren revisión antes de cerrar.
+                  </p>
+                  {Math.abs(detail.totalAdvances - detail.totalExpenses - detail.balance) >
+                    0.01 && (
+                    <p role="alert">
+                      El total registrado y los componentes no coinciden. Actualiza la rendición y
+                      revisa los movimientos antes de conciliar.
+                    </p>
+                  )}
+                </details>
                 <div className="admin-vehicle-actions">
                   {detail.trip === null ? null : (
                     <Link className="admin-text-link" to={tripSummaryPath(detail.trip.id)}>

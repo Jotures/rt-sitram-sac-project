@@ -183,6 +183,9 @@ describe("administrative status language", () => {
 describe("operational search coverage", () => {
   function searchGateway() {
     return {
+      listFuelEntries: vi.fn(async () => []),
+      listExpenses: vi.fn(async () => []),
+      listAdvances: vi.fn(async () => []),
       listOperationalCycles: vi.fn(async () => [
         {
           id: "outing-a",
@@ -230,6 +233,25 @@ describe("operational search coverage", () => {
     expect(gateway.listVehicles).not.toHaveBeenCalled();
     expect(gateway.listMaintenance).not.toHaveBeenCalled();
     expect(result.rows).toEqual([]);
+  });
+  it("loads only fuel when that type is requested", async () => {
+    const gateway = searchGateway();
+    await loadOperationalSearch(gateway as unknown as AdminDataGateway, true, "Combustible");
+    expect(gateway.listFuelEntries).toHaveBeenCalledOnce();
+    expect(gateway.listOperationalCycles).not.toHaveBeenCalled();
+    expect(gateway.listSettlements).not.toHaveBeenCalled();
+    expect(gateway.listSuppliers).not.toHaveBeenCalled();
+  });
+  it("marks account status unknown when its source fails, including outing-only searches", async () => {
+    const gateway = searchGateway();
+    gateway.listSettlements.mockRejectedValueOnce(new Error("offline"));
+    const result = await loadOperationalSearch(
+      gateway as unknown as AdminDataGateway,
+      true,
+      "Salida",
+    );
+    expect(result.rows[0]?.pendingAccount).toBeUndefined();
+    expect(result.unavailable).toEqual(["Rendiciones"]);
   });
   it("reports a failed search instead of an empty operation when all sources fail", async () => {
     const gateway = searchGateway();

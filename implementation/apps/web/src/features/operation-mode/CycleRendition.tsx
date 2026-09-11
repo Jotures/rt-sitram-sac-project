@@ -19,6 +19,7 @@ import {
 import { MoreDetails } from "./OperationModeProvider";
 import { createSupabaseAdminDataGateway } from "../admin-ui/admin-data";
 import { CycleReportPanel } from "../reports/CycleReportPanel";
+import { AccountExplanation } from "./AccountExplanation";
 
 interface Movement {
   readonly incurred_at?: string;
@@ -340,7 +341,7 @@ export function CycleRendition({ cycleId }: { readonly cycleId: string }): React
       )}
       {data && (
         <>
-          <section className="admin-card">
+          <section className="admin-card" id="rendition-advances">
             <h2>
               {data.cycle.code} ·{" "}
               {data.settlement?.status === "closed" ? "Rendición cerrada" : "Rendición pendiente"}
@@ -391,7 +392,8 @@ export function CycleRendition({ cycleId }: { readonly cycleId: string }): React
               ))}
             </MoreDetails>
           </section>
-          <section className="admin-card">
+          <AccountExplanation data={data} usingLocal={usingLocal} />
+          <section className="admin-card" id="rendition-records">
             <h2>Ya registrado en el recorrido</h2>
             <p>
               Revisa estos registros antes de transcribir la hoja. El combustible conserva su propio
@@ -501,7 +503,7 @@ export function CycleRendition({ cycleId }: { readonly cycleId: string }): React
               </label>
             )}
           </section>
-          <section className="admin-card">
+          <section className="admin-card" id="rendition-sheet">
             <h2>Resumen de la hoja</h2>
             <p>
               Escribe el total por categoría, incluyendo los gastos ya registrados. Solo la
@@ -644,7 +646,7 @@ export function CycleRendition({ cycleId }: { readonly cycleId: string }): React
               </>
             )}
           </section>
-          <section className="admin-card">
+          <section className="admin-card" id="rendition-payments">
             <h2>Devoluciones y reembolsos</h2>
             {data.payments.map((p) => (
               <div key={p.id}>

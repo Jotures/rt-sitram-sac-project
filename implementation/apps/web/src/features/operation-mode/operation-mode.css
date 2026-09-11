@@ -716,3 +716,90 @@
     text-align: left;
   }
 }
+.capture-assistance:empty {
+  display: none;
+}
+.assistance-suggestion,
+.assistance-warning {
+  border: 1px solid var(--border-color, #cbd5d2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-block: 8px;
+  background: var(--surface-color, #f5f8f7);
+  overflow-wrap: anywhere;
+}
+.assistance-suggestion p {
+  margin: 0 0 8px;
+}
+.assistance-suggestion button,
+.assistance-filters button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.assistance-warning {
+  background: #fff7e8;
+  border-color: #cda866;
+  color: #503a1b;
+}
+.assistance-warning label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+}
+.assistance-warning input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.assistance-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-block: 8px;
+}
+.assistance-filters span {
+  background: #e7efed;
+  color: #244a41;
+  border-radius: 8px;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+.account-explanation summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 10px;
+  font-weight: 700;
+}
+.account-equation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
+}
+.account-equation dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.account-next-steps li {
+  margin-block: 12px;
+}
+[id^="rendition-"] {
+  scroll-margin-top: 90px;
+}
+@media (max-width: 380px) {
+  .account-equation {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .account-equation dd {
+    text-align: left;
+    margin-bottom: 10px;
+  }
+}

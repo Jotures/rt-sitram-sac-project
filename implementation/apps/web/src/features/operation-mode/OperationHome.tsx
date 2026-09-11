@@ -5,7 +5,8 @@ import type {
   AdminListRow,
   AdminOperationalCycleRow,
 } from "../admin-ui/admin-data";
-import { cycleIdentity, cycleNextStep, cycleStateLabel, outingPath } from "./workspace-model";
+import { outingPath } from "./workspace-model";
+import { operationNextSteps, isOpenAccount } from "./assistance-model";
 import { useOperationActivity } from "./useOperationActivity";
 
 export function OperationHome({
@@ -41,7 +42,8 @@ export function OperationHome({
   const inProgress =
     cycles?.filter((cycle) => cycle.status === "active" && !cycle.returnedAt) ?? [];
   const planned = cycles?.filter((cycle) => cycle.status === "planned") ?? [];
-  const accounts = settlements?.filter((row) => !/cerrad|closed|cancel/i.test(row.status)) ?? [];
+  const accounts = settlements?.filter(isOpenAccount) ?? [];
+  const steps = operationNextSteps(cycles, settlements);
   const pending = commands.filter((command) => command.status !== "confirmed");
   return (
     <section className="quick-workspace operation-home" aria-label="Resumen de la operación">
@@ -94,67 +96,32 @@ export function OperationHome({
           <h2 id="home-attention-title">Para continuar</h2>
         </div>
         {cycles === null && !errors.length && <p role="status">Consultando la operación…</p>}
-        {cycles !== null &&
-          planned.length === 0 &&
-          inProgress.length === 0 &&
-          accounts.length === 0 &&
-          settlements !== null && (
-            <p className="quick-outings__empty">
-              No hay recorridos activos ni rendiciones abiertas. Cuando una unidad vaya a salir,
-              registra su salida.
-            </p>
-          )}
-        {accounts.slice(0, 3).map((row) => (
-          <Link
-            className="operation-attention-row"
-            key={row.id}
-            to={`/finanzas/rendiciones/${row.id}`}
-          >
+        {cycles !== null && steps.length === 0 && settlements !== null && (
+          <p className="quick-outings__empty">
+            No hay pasos pendientes en las salidas y rendiciones consultadas. Cuando una unidad vaya
+            a salir, registra su salida.
+          </p>
+        )}
+        {steps.slice(0, 5).map((step) => (
+          <Link className="operation-attention-row" key={step.id} to={step.href}>
             <div>
-              <strong>{row.title}</strong>
-              <p>{row.description}</p>
+              <strong>{step.title}</strong>
+              <p>{step.reason}</p>
             </div>
-            <span>Revisar rendición</span>
+            <span>{step.action}</span>
           </Link>
         ))}
-        {planned.slice(0, 3).map((cycle) => (
-          <Link
-            className="operation-attention-row"
-            key={cycle.id}
-            to={outingPath(cycle.id, "start")}
-          >
-            <div>
-              <strong>{cycleIdentity(cycle)}</strong>
-              <p>
-                {cycle.notes ? `${cycle.notes} · ` : ""}
-                {cycle.title}
-              </p>
-            </div>
-            <span>Registrar partida</span>
-          </Link>
-        ))}
-        {accounts.length > 3 && (
+        {steps.length > 5 && (
+          <p className="admin-form-note">
+            Mostrando 5 de {steps.length} pasos. Primero aparecen las observaciones y cuentas de
+            recorridos terminados.
+          </p>
+        )}
+        {accounts.length > 0 && (
           <Link className="admin-text-link" to="/finanzas/rendiciones">
             Ver todas las rendiciones
           </Link>
         )}
-        {planned.length > 3 && (
-          <Link className="admin-text-link" to={`${outingPath()}?estado=planned`}>
-            Ver todas las programadas
-          </Link>
-        )}
-        {inProgress.slice(0, 4).map((cycle) => (
-          <Link className="operation-attention-row" key={cycle.id} to={outingPath(cycle.id)}>
-            <div>
-              <strong>{cycleIdentity(cycle)}</strong>
-              <p>
-                {cycle.notes ? `${cycle.notes} · ` : ""}
-                {cycle.title} · {cycleStateLabel(cycle)}
-              </p>
-            </div>
-            <span>{cycleNextStep(cycle).label}</span>
-          </Link>
-        ))}
         {(cycles?.length ?? 0) > 0 && (
           <Link className="admin-text-link" to={outingPath()}>
             Ver todas las salidas

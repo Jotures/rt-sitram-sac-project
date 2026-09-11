@@ -60,6 +60,61 @@ function clientWithRows(rowsByTable: Readonly<Record<string, readonly Record<str
 }
 
 describe("Supabase admin data gateway", () => {
+  it("preserves stable associations and comparison units for authorized capture history", async () => {
+    const gateway = createSupabaseAdminDataGateway(
+      clientWithRows({
+        fuel_entries: [
+          {
+            id: "fuel-a",
+            vehicle_id: "vehicle-a",
+            trip_id: null,
+            cycle_id: "cycle-a",
+            supplier_id: "supplier-a",
+            fueled_at: "2026-09-11T12:00Z",
+            quantity: 50,
+            volume_unit: "liter",
+            odometer_km: 20000,
+            total_amount: 300,
+            currency: "PEN",
+            validation_status: "validated",
+          },
+        ],
+        expenses: [
+          {
+            id: "expense-a",
+            vehicle_id: "vehicle-a",
+            cycle_id: "cycle-a",
+            category_id: "food",
+            incurred_at: "2026-09-11T12:00Z",
+            amount: 100,
+            approved_amount: 90,
+            currency: "PEN",
+            validation_status: "validated",
+          },
+        ],
+      }),
+    );
+    const fuel = (await gateway.listFuelEntries())[0];
+    expect(fuel).toMatchObject({
+      cycleId: "cycle-a",
+      rawStatus: "validated",
+      captureContext: {
+        vehicleId: "vehicle-a",
+        supplierId: "supplier-a",
+        volumeUnit: "liter",
+        quantity: 50,
+        odometerKm: 20000,
+        currency: "PEN",
+        local: false,
+      },
+    });
+    const expense = (await gateway.listExpenses())[0];
+    expect(expense).toMatchObject({
+      cycleId: "cycle-a",
+      amount: 90,
+      captureContext: { vehicleId: "vehicle-a", categoryId: "food", currency: "PEN" },
+    });
+  });
   it("uses authoritative remaining amounts including all partial and cancelled payments", async () => {
     const { client } = clientWithRpc({
       get_invoice_accounts: [

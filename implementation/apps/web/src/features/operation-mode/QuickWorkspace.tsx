@@ -16,6 +16,7 @@ import {
   type QuickAction,
 } from "./workspace-model";
 import { useOperationActivity } from "./useOperationActivity";
+import { CaptureAssistance } from "./CaptureAssistance";
 import { getOrCreateDeviceId } from "../driver-ui/device-and-evidence";
 import type {
   AdminDataGateway,
@@ -278,6 +279,8 @@ export function QuickWorkspace({
         <section className="admin-card">
           {options ? (
             <DepartureForm
+              gateway={gateway}
+              cycles={cycles}
               key={repeat?.id ?? "new"}
               context={context}
               options={options}
@@ -337,6 +340,8 @@ export function QuickWorkspace({
           )}
           {selectedId && (selected || pendingSelected) && canRecord && (
             <MovementForm
+              gateway={gateway}
+              vehicleId={selected?.vehicleId}
               key={`${selectedId}:${action}`}
               context={context}
               cycleId={selectedId}
@@ -759,11 +764,15 @@ function CycleServices({
 }
 
 function DepartureForm({
+  gateway,
+  cycles,
   context,
   options,
   repeat,
   onSave,
 }: {
+  readonly gateway: AdminDataGateway;
+  readonly cycles: readonly AdminOperationalCycleRow[];
   readonly context: AdminWriteContext;
   readonly options: AdminTripSetupOptions;
   readonly repeat: AdminOperationalCycleRow | null;
@@ -890,11 +899,15 @@ function DepartureForm({
         Ya conozco el primer servicio y su cliente
       </label>
       {withService && <ServiceFields options={options} />}
+      <CaptureAssistance gateway={gateway} kind="departure" cycles={cycles} />
+      {withFuel && <CaptureAssistance gateway={gateway} kind="fuel" />}
     </PersistentForm>
   );
 }
 
 export function MovementForm({
+  gateway,
+  vehicleId,
   context,
   cycleId,
   action,
@@ -902,6 +915,8 @@ export function MovementForm({
   categories,
   onSave,
 }: {
+  readonly gateway?: AdminDataGateway;
+  readonly vehicleId?: string | null | undefined;
   readonly context: AdminWriteContext;
   readonly cycleId: string;
   readonly action: Exclude<QuickAction, "departure">;
@@ -990,6 +1005,9 @@ export function MovementForm({
         />
       )}
       {action === "fuel" && <FuelFields />}
+      {gateway && (action === "fuel" || action === "expense") && (
+        <CaptureAssistance gateway={gateway} kind={action} vehicleId={vehicleId} />
+      )}
       {action === "return" && (
         <p>
           La llegada a Cusco se registra ahora. La cuenta del conductor se revisa y resuelve en
@@ -1194,7 +1212,7 @@ function PersistentForm({
   const remember = (form: HTMLFormElement): void => {
     const fields: Record<string, string> = {};
     for (const [name, value] of new FormData(form))
-      if (typeof value === "string") fields[name] = value;
+      if (typeof value === "string" && name !== "assistance_ack") fields[name] = value;
     const next = { id: draft.id, fields };
     try {
       localStorage.setItem(key, JSON.stringify(next));

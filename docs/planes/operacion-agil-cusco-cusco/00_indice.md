@@ -15,6 +15,9 @@ Exportaciones por registro: [uso, contrato y validación](05_exportaciones_por_r
 Simplificación de Inicio, Salidas y Finanzas, búsqueda y captura contextual:
 [navegación y contexto](06_navegacion_y_contexto.md), DEC-049.
 
+Ayudas explicables dentro de la operación:
+[asistencia operativa](07_asistencia_operativa.md), DEC-050.
+
 La entrega anterior, limitada a Salidas y comprobaciones HTTP, fue parcial. Este expediente sustituye sus afirmaciones de cierre.
 
 - Implementado: modo personal global, navegación diaria, formularios esenciales y vista completa.

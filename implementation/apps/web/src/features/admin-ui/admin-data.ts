@@ -52,6 +52,20 @@ export interface AdminPrivateFile {
 }
 
 export interface AdminListRow {
+  /** Stable associations for contextual help; never inferred from display labels. */
+  readonly cycleId?: string | null;
+  readonly rawStatus?: string | null;
+  readonly captureContext?: {
+    readonly vehicleId: string | null;
+    readonly tripId: string | null;
+    readonly categoryId: string | null;
+    readonly currency: string | null;
+    readonly quantity: number | null;
+    readonly volumeUnit: string | null;
+    readonly odometerKm: number | null;
+    readonly supplierId: string | null;
+    readonly local: boolean;
+  };
   readonly id: string;
   readonly title: string;
   readonly description: string;
@@ -1031,7 +1045,7 @@ const selectColumns: Readonly<Record<AdminTable, string>> = {
   operational_cycles:
     "id, code, vehicle_id, primary_driver_id, status, return_status, capture_channel, notes, version, started_at, ended_at, returned_at, scheduled_at, created_at",
   expenses:
-    "id, trip_id, cycle_id, driver_id, incurred_at, amount, currency, description, validation_status, approved_amount, receipt_type, receipt_number, receipt_file_id",
+    "id, trip_id, cycle_id, vehicle_id, category_id, supplier_id, driver_id, incurred_at, amount, currency, description, validation_status, approved_amount, receipt_type, receipt_number, receipt_file_id",
   advances:
     "id, is_test, trip_id, cycle_id, driver_id, delivered_at, amount, currency, concept, status, receipt_file_id",
   settlements:
@@ -1057,7 +1071,7 @@ const selectColumns: Readonly<Record<AdminTable, string>> = {
   odometer_entries:
     "id, trip_id, vehicle_id, reading_km, reading_at, reading_type, source, created_at",
   fuel_entries:
-    "id, trip_id, cycle_id, driver_id, fueled_at, location, odometer_km, quantity, volume_unit, unit_price, total_amount, currency, payment_source, receipt_type, receipt_number, receipt_file_id, validation_status",
+    "id, trip_id, cycle_id, vehicle_id, supplier_id, driver_id, fueled_at, location, odometer_km, quantity, volume_unit, unit_price, total_amount, currency, payment_source, receipt_type, receipt_number, receipt_file_id, validation_status",
   incidents:
     "id, trip_id, driver_id, occurred_at, location, incident_type, severity, description, action_taken, status, estimated_cost, file_id",
   trip_status_events:
@@ -1378,6 +1392,7 @@ export function createSupabaseAdminDataGateway(
       const trip = tripsById.get(readText(row, "trip_id") ?? "");
       const cycle = cyclesById.get(readText(row, "cycle_id") ?? "");
       return {
+        ...captureMetadata(row, trip?.vehicleId ?? cycle?.vehicleId ?? null),
         id: requiredId(row),
         title: readText(row, "description") ?? "Gasto de viaje",
         description: markOfflineDescription(
@@ -1417,6 +1432,7 @@ export function createSupabaseAdminDataGateway(
       const cycle = cyclesById.get(readText(row, "cycle_id") ?? "");
       const detail = describeFuel(row);
       return {
+        ...captureMetadata(row, trip?.vehicleId ?? cycle?.vehicleId ?? null),
         id: requiredId(row),
         title:
           `${formatNumber(readNumber(row, "quantity"))} ${readText(row, "volume_unit") ?? ""}`.trim(),
@@ -1514,6 +1530,8 @@ export function createSupabaseAdminDataGateway(
             ? null
             : (vehicleLabels.get(cycle.vehicleId) ?? null));
         return {
+          cycleId: readText(row, "cycle_id"),
+          rawStatus: readText(row, "status"),
           id: requiredId(row),
           title: route,
           description: [
@@ -3104,6 +3122,27 @@ export function createSupabaseAdminDataGateway(
         body: { profile_id: profileId },
       });
       if (result.error !== null) throw new Error(result.error.message);
+    },
+  };
+}
+
+function captureMetadata(
+  row: Record<string, unknown>,
+  vehicleId: string | null,
+): Pick<AdminListRow, "captureContext" | "rawStatus" | "cycleId"> {
+  return {
+    cycleId: readText(row, "cycle_id"),
+    rawStatus: readText(row, "validation_status"),
+    captureContext: {
+      vehicleId: readText(row, "vehicle_id") ?? vehicleId,
+      tripId: readText(row, "trip_id"),
+      categoryId: readText(row, "category_id"),
+      currency: readText(row, "currency"),
+      quantity: readNumber(row, "quantity"),
+      volumeUnit: readText(row, "volume_unit"),
+      odometerKm: readNumber(row, "odometer_km"),
+      supplierId: readText(row, "supplier_id"),
+      local: isOfflineRow(row),
     },
   };
 }
